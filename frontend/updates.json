@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "1.0.0",
+  "components": {
+    "DevModeAssetChecker": { "minVersion": "1.0.0" },
+    "WeScalePODConsole":   { "minVersion": "1.0.0" }
+  },
+  "updates": []
+}
