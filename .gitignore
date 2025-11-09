@@ -31,3 +31,8 @@ Thumbs.db
 *.key
 *.pem
 credentials.json
+
+# Large files
+*.zip
+*.rar
+*.7z
