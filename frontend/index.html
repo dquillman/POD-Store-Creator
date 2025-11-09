@@ -348,13 +348,13 @@ function switchTab(idx){
 /* =========================
    DevMode Asset Checker
    ========================= */
-let gridWrap=null;
+let localgridWrap=null;
 
 function renderAuditTab(){
   const row = el('div',{class:'row'});
-  // Create gridWrap first
+  // Create localGridWrap first
   const localGridWrap = el('div',{style:'margin-top:12px;'});
-  gridWrap = localGridWrap; // Assign to global
+  localGridWrap = localGridWrap; // Assign to global
 
   // Left
   const left = el('div',{class:'panel'},[
