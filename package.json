@@ -10,7 +10,8 @@
     "setup": "node devmode_setup_all.js",
     "gen-csv": "node gen_products_csv.mjs",
     "check-status": "node check_store_status.mjs",
-    "install-hero": "node install_hero_banner.mjs"
+    "install-hero": "node install_hero_banner.mjs",
+    "bump-version": "node bump_version.mjs"
   },
   "keywords": [
     "shopify",

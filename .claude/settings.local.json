@@ -17,7 +17,8 @@
       "Bash(gcloud iam workload-identity-pools list:*)",
       "Bash(powershell.exe -ExecutionPolicy Bypass -File setup_workload_identity.ps1)",
       "Bash(exit 0)",
-      "Bash(npm run check-status:*)"
+      "Bash(npm run check-status:*)",
+      "Bash(gcloud run deploy:*)"
     ],
     "deny": [],
     "ask": []
