@@ -1,0 +1,3 @@
+cd "G:\Users\daveq\DevMode_Shopify_Scripts"
+npm init -y
+npm i node-fetch form-data dotenv

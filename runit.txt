@@ -1,0 +1,1 @@
+node devmode_setup_all.js

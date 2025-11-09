@@ -1,0 +1,29 @@
+{
+  "name": "devmode-shopify-scripts",
+  "version": "1.0.0",
+  "description": "Shopify automation scripts for Dev Mode store setup and Printful integration",
+  "type": "module",
+  "main": "devmode_setup_all.js",
+  "scripts": {
+    "start": "node devmode_setup_all.js",
+    "bootstrap": "node devmode_bootstrap.js",
+    "setup": "node devmode_setup_all.js",
+    "gen-csv": "node gen_products_csv.mjs"
+  },
+  "keywords": [
+    "shopify",
+    "printful",
+    "automation",
+    "devmode"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "form-data": "^4.0.4",
+    "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

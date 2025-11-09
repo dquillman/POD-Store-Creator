@@ -1,0 +1,205 @@
+// upload-devmode.js
+// Creates Shopify products for each PNG artwork: a Mug and a T-Shirt.
+// ESM compatible. Node 18+ required.
+
+import 'dotenv/config';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+// ------------------- Config (edit if you want) -------------------
+const ART_DIR = process.argv.includes('--dir')
+  ? process.argv[process.argv.indexOf('--dir') + 1]
+  : './artworks'; // folder with PNGs
+
+const VENDOR = getArg('--vendor') || 'Dev Mode';
+const PUBLISH = process.argv.includes('--publish'); // else draft
+const PRICE_MUG = parseFloat(getArg('--price-mug') || '19.95');
+const PRICE_TEE = parseFloat(getArg('--price-tee') || '24.95');
+
+const TEE_SIZES = ['S', 'M', 'L', 'XL', '2XL'];
+const TEE_COLORS = ['Black', 'White'];
+const MUG_SIZES = ['11oz', '15oz'];
+const MUG_COLORS = ['Black', 'White'];
+
+// ------------------- Env -------------------
+const SHOP_DOMAIN = process.env.SHOPIFY_STORE_DOMAIN || process.env.SHOPIFY_STORE || process.env.SHOP_DOMAIN; // e.g., dev-mode-4.myshopify.com
+const ADMIN_TOKEN = process.env.SHOPIFY_ADMIN_API_ACCESS_TOKEN || process.env.ADMIN_API_ACCESS_TOKEN || process.env.SHOPIFY_ACCESS_TOKEN;
+const API_VERSION = process.env.SHOPIFY_API_VERSION || '2025-01';
+
+if (!SHOP_DOMAIN || !ADMIN_TOKEN) {
+  console.error('❌ Missing SHOPIFY_STORE_DOMAIN or SHOPIFY_ADMIN_API_ACCESS_TOKEN in .env');
+  process.exit(1);
+}
+
+// ------------------- Helpers -------------------
+function getArg(flag) {
+  const i = process.argv.indexOf(flag);
+  return i >= 0 ? process.argv[i + 1] : null;
+}
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+async function rest(method, endpoint, body) {
+  const url = `https://${SHOP_DOMAIN}/admin/api/${API_VERSION}${endpoint}`;
+  const res = await fetch(url, {
+    method,
+    headers: {
+      'X-Shopify-Access-Token': ADMIN_TOKEN,
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`REST ${method} ${endpoint} failed: ${res.status} ${res.statusText}\n${text}`);
+  }
+  return res.json();
+}
+
+function titleFromFilename(file) {
+  // "Code_Coffee_Repeat_white.png" -> "Code Coffee Repeat"
+  const base = path.basename(file).replace(/\.[^.]+$/, '');
+  return base
+    .replace(/[_-]+/g, ' ')
+    .replace(/\b(white|black)\b/i, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim()
+    .replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function b64(filePath) {
+  const buf = fs.readFileSync(filePath);
+  return buf.toString('base64');
+}
+
+function productPayload({ title, productType, variants, imageB64, tags }) {
+  return {
+    product: {
+      title,
+      body_html: `<p>${title}</p>`,
+      vendor: VENDOR,
+      product_type: productType,
+      status: PUBLISH ? 'active' : 'draft',
+      tags,
+      variants: variants.map((v) => ({
+        option1: v.option1,
+        option2: v.option2,
+        price: v.price.toFixed(2),
+        sku: v.sku,
+        inventory_management: null, // POD: do not track
+        inventory_policy: 'deny',
+        requires_shipping: true,
+      })),
+      options: buildOptionsFromVariants(variants),
+      images: imageB64 ? [{ attachment: imageB64 }] : [],
+    },
+  };
+}
+
+function buildOptionsFromVariants(variants) {
+  // Derive option names dynamically (Size/Color)
+  const opt1 = new Set(variants.map((v) => v.option1));
+  const opt2 = new Set(variants.map((v) => v.option2).filter(Boolean));
+  const options = [];
+  if (opt1.size > 1) options.push({ name: 'Size', values: Array.from(opt1) });
+  if (opt2.size > 0) options.push({ name: 'Color', values: Array.from(opt2) });
+  // If only one dimension, name it 'Option'
+  if (options.length === 0) options.push({ name: 'Option', values: Array.from(opt1) });
+  return options;
+}
+
+function teeVariants(baseSku) {
+  const out = [];
+  for (const size of TEE_SIZES) {
+    for (const color of TEE_COLORS) {
+      out.push({
+        option1: size,
+        option2: color,
+        price: PRICE_TEE,
+        sku: `${baseSku}-TEE-${size}-${color}`.toUpperCase(),
+      });
+    }
+  }
+  return out;
+}
+
+function mugVariants(baseSku) {
+  const out = [];
+  for (const size of MUG_SIZES) {
+    for (const color of MUG_COLORS) {
+      out.push({
+        option1: size,
+        option2: color,
+        price: PRICE_MUG,
+        sku: `${baseSku}-MUG-${size}-${color}`.toUpperCase(),
+      });
+    }
+  }
+  return out;
+}
+
+// ------------------- Main -------------------
+(async () => {
+  const absDir = path.resolve(__dirname, ART_DIR);
+  if (!fs.existsSync(absDir)) {
+    console.error(`❌ Art directory not found: ${absDir}`);
+    process.exit(1);
+  }
+
+  const files = fs
+    .readdirSync(absDir)
+    .filter((f) => f.toLowerCase().endsWith('.png'));
+
+  if (files.length === 0) {
+    console.error('❌ No PNGs found in', absDir);
+    process.exit(1);
+  }
+
+  console.log(`>>> Uploading ${files.length} artwork file(s) from ${absDir}`);
+  for (const file of files) {
+    const filePath = path.join(absDir, file);
+    const base = titleFromFilename(file);
+    const baseSku = base.replace(/\s+/g, '_');
+
+    const img64 = b64(filePath);
+
+    // ---- Create Mug product
+    try {
+      const mugTitle = `Dev Mode — ${base} Mug`;
+      const mugPayload = productPayload({
+        title: mugTitle,
+        productType: 'Mug',
+        variants: mugVariants(baseSku),
+        imageB64: img64,
+        tags: ['Dev Mode', 'Mug', 'Tech', 'Programmer', 'Coffee'],
+      });
+      const mugRes = await rest('POST', '/products.json', mugPayload);
+      console.log(`✓ Mug: ${mugRes.product?.id} — ${mugTitle}`);
+    } catch (e) {
+      console.warn(`! Mug failed for "${base}": ${e.message}`);
+    }
+
+    // ---- Create Tee product
+    try {
+      const teeTitle = `Dev Mode — ${base} Tee`;
+      const teePayload = productPayload({
+        title: teeTitle,
+        productType: 'T-Shirt',
+        variants: teeVariants(baseSku),
+        imageB64: img64,
+        tags: ['Dev Mode', 'T-Shirt', 'Tech', 'Programmer'],
+      });
+      const teeRes = await rest('POST', '/products.json', teePayload);
+      console.log(`✓ Tee: ${teeRes.product?.id} — ${teeTitle}`);
+    } catch (e) {
+      console.warn(`! Tee failed for "${base}": ${e.message}`);
+    }
+  }
+
+  console.log('>>> Done.');
+  if (!PUBLISH) {
+    console.log('i Products were created as DRAFT. Re-run with --publish to set Active.');
+  }
+})();
