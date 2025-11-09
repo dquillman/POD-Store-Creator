@@ -5,7 +5,19 @@
       "Bash(git init:*)",
       "Bash(git remote add:*)",
       "Bash(git add:*)",
-      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch:*)"
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch:*)",
+      "Bash(gh run list:*)",
+      "Bash(echo:*)",
+      "Bash(gh auth status:*)",
+      "Bash(gcloud config:*)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File check_deployment.ps1)",
+      "Bash(gcloud run services describe:*)",
+      "Bash(gcloud run services list:*)",
+      "Bash(gcloud storage buckets list:*)",
+      "Bash(gcloud iam workload-identity-pools list:*)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File setup_workload_identity.ps1)",
+      "Bash(exit 0)",
+      "Bash(npm run check-status:*)"
     ],
     "deny": [],
     "ask": []

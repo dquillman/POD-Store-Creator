@@ -59,10 +59,40 @@
 
 <script>
 /* =========================
-   Update channel (optional)
+   Configuration
    ========================= */
 const LOCAL_VERSION = '1.0.0';
-const UPDATE_URL = 'https://raw.githubusercontent.com/YOUR_GITHUB/POD-Creator/main/frontend/updates.json'; // ← set YOUR_GITHUB
+const UPDATE_URL = 'https://raw.githubusercontent.com/dquillman/POD-Store-Creator/main/frontend/updates.json';
+// Backend API URL - will be auto-detected from Cloud Run or can be set manually
+const API_URL = window.location.hostname === 'storage.googleapis.com'
+  ? 'https://pod-creator-api-REPLACE_WITH_YOUR_CLOUD_RUN_HASH-uc.a.run.app'
+  : 'http://localhost:8080';
+
+/* =========================
+   API Helper
+   ========================= */
+async function apiCall(endpoint, options = {}) {
+  const url = `${API_URL}${endpoint}`;
+  try {
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+      }
+    });
+    const json = await res.json();
+    if (!json.ok && json.error) throw new Error(json.error);
+    return json;
+  } catch (error) {
+    console.error(`API call failed: ${endpoint}`, error);
+    throw error;
+  }
+}
+
+/* =========================
+   Update channel (optional)
+   ========================= */
 
 async function checkForUpdates(){
   const s = document.getElementById('updateStatus'); s.textContent = 'Checking…';
@@ -330,26 +360,340 @@ function renderSettingsTab(){
 }
 
 /* =========================
-   POD Console (scaffold)
+   POD Console (full implementation)
    ========================= */
+let podData = { trends: [], prompts: [], mockups: [], listings: [] };
+
 function renderPODScaffold(){
-  return el('div',{class:'panel'},[
-    el('h2',{},'WeScale POD Console'),
-    el('div',{},'Scaffold for research → brand → design prompts → QA/publish. Extend with your own data/actions or connect to your backend.'),
+  return el('div',{},[
+    el('div',{class:'panel'},[
+      el('h2',{},'POD Workflow Console'),
+      el('div',{class:'help'},'Complete workflow: Research → Design → Mockups → Listings → Publish')
+    ]),
+
+    // Research Section
     el('div',{class:'split',style:'margin-top:12px;'},[
       el('div',{class:'panel'},[
-        el('h2',{},'Design Research'),
-        el('div',{class:'help'},'Find 10 design trends from social/Etsy/Amazon/Pinterest.'),
-        el('button',{class:'btn',onclick:()=>toast('Hook this to your trend generator.')},'Generate Trends')
+        el('h2',{},'1. Design Research'),
+        el('div',{class:'help'},'Generate trending design ideas for your niche'),
+        el('div',{style:'margin:8px 0;'},[
+          el('label',{},'Niche: '),
+          el('input',{id:'nicheInput',class:'input',value:'developer',style:'width:200px;margin-left:8px;'})
+        ]),
+        el('button',{class:'btn',onclick:generateTrends},'Generate Trends'),
+        el('div',{id:'trendsOutput',style:'margin-top:12px;'})
       ]),
       el('div',{class:'panel'},[
-        el('h2',{},'Design Generator'),
-        el('div',{class:'help'},'Create 10 t-shirt prompts for your niche.'),
-        el('button',{class:'btn',onclick:()=>toast('Hook this to your prompt generator.')},'Generate Prompts')
+        el('h2',{},'2. Design Prompts'),
+        el('div',{class:'help'},'Create specific t-shirt design prompts'),
+        el('div',{style:'margin:8px 0;'},[
+          el('label',{},'Style: '),
+          el('select',{id:'styleInput',class:'select',style:'margin-left:8px;'},[
+            el('option',{value:'minimalist'},'Minimalist'),
+            el('option',{value:'retro'},'Retro'),
+            el('option',{value:'bold'},'Bold'),
+            el('option',{value:'funny'},'Funny')
+          ])
+        ]),
+        el('button',{class:'btn',onclick:generatePrompts},'Generate Prompts'),
+        el('div',{id:'promptsOutput',style:'margin-top:12px;'})
       ])
     ]),
-    el('div',{class:'footer'},'Tip: This tab is intentionally minimal so you can replace it with your own logic later.')
+
+    // Mockups & Listings Section
+    el('div',{class:'split',style:'margin-top:12px;'},[
+      el('div',{class:'panel'},[
+        el('h2',{},'3. Generate Mockups'),
+        el('div',{class:'help'},'Create product mockups from your designs'),
+        el('div',{style:'margin:8px 0;'},[
+          el('label',{},'Image URL: '),
+          el('input',{id:'mockupImageUrl',class:'input',placeholder:'https://...',style:'width:100%;margin-top:4px;'})
+        ]),
+        el('button',{class:'btn',onclick:generateMockup},'Create Mockup'),
+        el('div',{id:'mockupOutput',style:'margin-top:12px;'})
+      ]),
+      el('div',{class:'panel'},[
+        el('h2',{},'4. Create Listing'),
+        el('div',{class:'help'},'Build Shopify product listing'),
+        el('div',{style:'margin:8px 0;'},[
+          el('label',{},'Title: '),
+          el('input',{id:'listingTitle',class:'input',placeholder:'Product title',style:'width:100%;margin-top:4px;'}),
+          el('label',{style:'margin-top:8px;'},'Price: '),
+          el('input',{id:'listingPrice',class:'input',value:'29.99',style:'width:100px;margin-left:8px;'})
+        ]),
+        el('button',{class:'btn',onclick:createListing},'Create Listing'),
+        el('div',{id:'listingOutput',style:'margin-top:12px;'})
+      ])
+    ]),
+
+    // Publish Section
+    el('div',{class:'panel',style:'margin-top:12px;'},[
+      el('h2',{},'5. Publish Product'),
+      el('div',{class:'help'},'Publish draft product to your store'),
+      el('div',{style:'margin:8px 0;'},[
+        el('label',{},'Listing ID: '),
+        el('input',{id:'publishListingId',class:'input',placeholder:'From step 4',style:'width:200px;margin-left:8px;'})
+      ]),
+      el('button',{class:'btn',onclick:publishProduct},'Publish to Store'),
+      el('div',{id:'publishOutput',style:'margin-top:12px;'})
+    ]),
+
+    // Store Status Upload
+    el('div',{class:'panel',style:'margin-top:12px;'},[
+      el('h2',{},'Store Status Check'),
+      el('div',{class:'help'},'Upload store_status_report.json from your local checker'),
+      el('div',{style:'margin:8px 0;'},[
+        (()=>{
+          const lbl=el('label',{class:'btn',style:'display:inline-block;'},'Upload Status Report');
+          const input=el('input',{type:'file',accept:'.json',style:'display:none;'});
+          lbl.onclick=()=>input.click();
+          input.onchange=async e=>{ await uploadStoreStatus(e.target.files[0]); };
+          return el('div',{},[lbl,input]);
+        })()
+      ]),
+      el('div',{id:'statusOutput',style:'margin-top:12px;'})
+    ])
   ]);
+}
+
+// Generate Trends
+async function generateTrends(){
+  const niche = document.getElementById('nicheInput').value || 'developer';
+  const output = document.getElementById('trendsOutput');
+  output.innerHTML = 'Loading...';
+
+  try {
+    const result = await apiCall('/api/trends', {
+      method: 'POST',
+      body: JSON.stringify({ niche, keywords: [] })
+    });
+
+    podData.trends = result.trends || [];
+    const list = el('ol',{style:'margin:8px 0;padding-left:20px;'});
+    result.trends.forEach(t => list.appendChild(el('li',{style:'margin:4px 0;'},t)));
+    output.innerHTML = '';
+    output.appendChild(el('div',{class:'good',style:'margin-bottom:8px;'},'✓ Generated ' + result.trends.length + ' trends'));
+    output.appendChild(list);
+    toast('Trends generated!');
+  } catch (error) {
+    output.innerHTML = '';
+    output.appendChild(el('div',{class:'bad'},'Error: ' + error.message));
+  }
+}
+
+// Generate Prompts
+async function generatePrompts(){
+  const niche = document.getElementById('nicheInput').value || 'developer';
+  const style = document.getElementById('styleInput').value || 'minimalist';
+  const output = document.getElementById('promptsOutput');
+  output.innerHTML = 'Loading...';
+
+  try {
+    const result = await apiCall('/api/prompts', {
+      method: 'POST',
+      body: JSON.stringify({ niche, style, count: 10 })
+    });
+
+    podData.prompts = result.prompts || [];
+    const list = el('ol',{style:'margin:8px 0;padding-left:20px;font-size:13px;'});
+    result.prompts.forEach(p => list.appendChild(el('li',{style:'margin:6px 0;'},p)));
+    output.innerHTML = '';
+    output.appendChild(el('div',{class:'good',style:'margin-bottom:8px;'},'✓ Generated ' + result.prompts.length + ' prompts'));
+    output.appendChild(list);
+    toast('Prompts generated!');
+  } catch (error) {
+    output.innerHTML = '';
+    output.appendChild(el('div',{class:'bad'},'Error: ' + error.message));
+  }
+}
+
+// Generate Mockup
+async function generateMockup(){
+  const imageUrl = document.getElementById('mockupImageUrl').value;
+  const output = document.getElementById('mockupOutput');
+
+  if (!imageUrl) {
+    toast('Please enter an image URL');
+    return;
+  }
+
+  output.innerHTML = 'Generating mockup... (this may take 10-20 seconds)';
+
+  try {
+    const result = await apiCall('/api/mockup', {
+      method: 'POST',
+      body: JSON.stringify({ imageUrl, productId: 71, variantId: 4012 })
+    });
+
+    podData.mockups = result.mockups || [];
+    output.innerHTML = '';
+    output.appendChild(el('div',{class:'good',style:'margin-bottom:8px;'},'✓ Mockup generated'));
+
+    if (result.mockups && result.mockups.length > 0) {
+      result.mockups.forEach(m => {
+        output.appendChild(el('img',{src:m.url,style:'max-width:200px;margin:8px;border:1px solid #ddd;border-radius:4px;'}));
+      });
+    }
+
+    if (result.message) {
+      output.appendChild(el('div',{class:'help',style:'margin-top:8px;'},result.message));
+    }
+
+    toast('Mockup ready!');
+  } catch (error) {
+    output.innerHTML = '';
+    output.appendChild(el('div',{class:'bad'},'Error: ' + error.message));
+  }
+}
+
+// Create Listing
+async function createListing(){
+  const title = document.getElementById('listingTitle').value;
+  const price = parseFloat(document.getElementById('listingPrice').value) || 29.99;
+  const output = document.getElementById('listingOutput');
+
+  if (!title) {
+    toast('Please enter a product title');
+    return;
+  }
+
+  output.innerHTML = 'Creating listing...';
+
+  try {
+    const images = podData.mockups.map(m => m.url);
+    const result = await apiCall('/api/listing', {
+      method: 'POST',
+      body: JSON.stringify({
+        title,
+        description: `${title} - High quality print-on-demand apparel`,
+        tags: ['devmode', 'developer', 'coding'],
+        price,
+        images
+      })
+    });
+
+    output.innerHTML = '';
+    output.appendChild(el('div',{class:'good',style:'margin-bottom:8px;'},'✓ Listing created'));
+    output.appendChild(el('div',{},[
+      el('strong',{},'Listing ID: '),
+      el('span',{},result.listingId)
+    ]));
+
+    if (result.adminUrl) {
+      output.appendChild(el('div',{style:'margin-top:8px;'},[
+        el('a',{href:result.adminUrl,target:'_blank',class:'btn'},'View in Shopify Admin')
+      ]));
+    }
+
+    if (result.message) {
+      output.appendChild(el('div',{class:'help',style:'margin-top:8px;'},result.message));
+    }
+
+    document.getElementById('publishListingId').value = result.listingId;
+    toast('Listing created!');
+  } catch (error) {
+    output.innerHTML = '';
+    output.appendChild(el('div',{class:'bad'},'Error: ' + error.message));
+  }
+}
+
+// Publish Product
+async function publishProduct(){
+  const listingId = document.getElementById('publishListingId').value;
+  const output = document.getElementById('publishOutput');
+
+  if (!listingId) {
+    toast('Please enter a listing ID');
+    return;
+  }
+
+  output.innerHTML = 'Publishing...';
+
+  try {
+    const result = await apiCall('/api/publish', {
+      method: 'POST',
+      body: JSON.stringify({ listingId })
+    });
+
+    output.innerHTML = '';
+    output.appendChild(el('div',{class:'good',style:'margin-bottom:8px;'},'✓ Product published!'));
+
+    if (result.url) {
+      output.appendChild(el('div',{style:'margin-top:8px;'},[
+        el('strong',{},'Store URL: '),
+        el('a',{href:result.url,target:'_blank'},result.url)
+      ]));
+    }
+
+    if (result.adminUrl) {
+      output.appendChild(el('div',{style:'margin-top:8px;'},[
+        el('a',{href:result.adminUrl,target:'_blank',class:'btn'},'View in Shopify Admin')
+      ]));
+    }
+
+    if (result.message) {
+      output.appendChild(el('div',{class:'help',style:'margin-top:8px;'},result.message));
+    }
+
+    toast('Product is live!');
+  } catch (error) {
+    output.innerHTML = '';
+    output.appendChild(el('div',{class:'bad'},'Error: ' + error.message));
+  }
+}
+
+// Upload Store Status
+async function uploadStoreStatus(file){
+  if (!file) return;
+
+  const output = document.getElementById('statusOutput');
+  output.innerHTML = 'Analyzing...';
+
+  try {
+    const text = await file.text();
+    const report = JSON.parse(text);
+
+    const result = await apiCall('/api/store-status', {
+      method: 'POST',
+      body: JSON.stringify(report)
+    });
+
+    const analysis = result.analysis;
+    output.innerHTML = '';
+
+    output.appendChild(el('div',{class:'good',style:'margin-bottom:12px;'},'✓ Report analyzed'));
+    output.appendChild(el('div',{style:'font-size:16px;font-weight:600;margin-bottom:8px;'},[
+      el('span',{},'Completion: '),
+      el('span',{class:analysis.completionPercentage >= 80 ? 'good' : 'bad'},analysis.completionPercentage + '%')
+    ]));
+
+    if (analysis.missingSteps.length > 0) {
+      output.appendChild(el('div',{style:'margin-top:12px;'},[
+        el('strong',{},'Missing Steps:'),
+        el('ul',{style:'margin:8px 0;padding-left:20px;'},
+          analysis.missingSteps.map(s => el('li',{},s))
+        )
+      ]));
+    }
+
+    if (analysis.recommendations.length > 0) {
+      output.appendChild(el('div',{style:'margin-top:12px;'},[
+        el('strong',{},'Recommendations:'),
+        el('ul',{style:'margin:8px 0;padding-left:20px;'},
+          analysis.recommendations.map(r => el('li',{},r))
+        )
+      ]));
+    }
+
+    if (analysis.readyForLaunch) {
+      output.appendChild(el('div',{class:'good',style:'margin-top:12px;font-weight:600;'},'🎉 Your store is ready to launch!'));
+    }
+
+    toast('Store status analyzed!');
+  } catch (error) {
+    output.innerHTML = '';
+    output.appendChild(el('div',{class:'bad'},'Error: ' + error.message));
+  }
 }
 </script>
 </body>
