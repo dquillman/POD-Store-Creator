@@ -290,6 +290,7 @@ const SPEC_DEVMODE = {
 const SPEC_POD = {
   appId:"wescale-pod-console", title:"WeScale POD Console",
   tabs:[
+    {id:"asset-audit",label:"Asset Audit"},
     {id:"niche",label:"Step 1 · Niche Research"},
     {id:"selector",label:"Mini-Audit"},
     {id:"brand",label:"Step 2–4 · Brand & Logo"},
@@ -335,8 +336,10 @@ function switchTab(idx){
     if(tab.id==='asset-audit') content.appendChild(renderAuditTab());
     if(tab.id==='store-setup') content.appendChild(renderStoreTab());
     if(tab.id==='settings') content.appendChild(renderSettingsTab());
-  }else{
-    content.appendChild(renderPODScaffold());
+  }else if(spec.appId==='wescale-pod-console'){
+    // Asset Audit is available in POD Console too
+    if(tab.id==='asset-audit') content.appendChild(renderAuditTab());
+    else content.appendChild(renderPODScaffold());
   }
 }
 
