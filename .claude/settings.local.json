@@ -32,7 +32,9 @@
       "Bash(gsutil -m setmeta:*)",
       "Bash(gsutil cp:*)",
       "Bash(gcloud storage cp:*)",
-      "Bash(gcloud auth list:*)"
+      "Bash(gcloud auth list:*)",
+      "Bash(powershell.exe -Command \"Start-Process ''file:///G:/Users/daveq/DevMode_Shopify_Scripts/frontend/index.html''\")",
+      "Bash(cmd.exe /c start chrome \"file:///G:/Users/daveq/DevMode_Shopify_Scripts/frontend/index.html\")"
     ],
     "deny": [],
     "ask": []

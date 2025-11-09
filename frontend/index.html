@@ -363,14 +363,14 @@ function renderAuditTab(){
       (()=>{ const lbl=el('label',{class:'btn',style:'display:inline-block;'},'Upload PNGs');
         const input=el('input',{type:'file',multiple:true,accept:'.png',style:'display:none;'});
         lbl.onclick=()=>input.click();
-        input.onchange=async e=>{ files=[...e.target.files]; checks=[]; await runChecks(); renderGrid(gridWrap); };
+        input.onchange=async e=>{ files=[...e.target.files]; checks=[]; await runChecks(); renderGrid(localGridWrap); };
         return el('div',{},[lbl,input]); })(),
       el('span',{class:'help',style:'margin-left:8px;'},'Tip: hold '),
       el('span',{class:'kbd'},'Shift'),
       el('span',{class:'help'},' to select multiple files.')
     ]),
     el('div',{style:'margin-top:8px;'},[
-      el('button',{class:'btn',onclick:async()=>{ await runChecks(); renderGrid(gridWrap); }},'Run Checks')
+      el('button',{class:'btn',onclick:async()=>{ await runChecks(); renderGrid(localGridWrap); }},'Run Checks')
     ]),
     localGridWrap
   ]);
@@ -381,7 +381,7 @@ function renderAuditTab(){
     el('div',{class:'help',style:'margin-top:8px;'},
       'Style A: DevMode 105px · Slogan 400px · #FFFFFF · transparent · left-aligned · no extra effects.')
   ]);
-  row.append(left,right); renderGrid(gridWrap); return row;
+  row.append(left,right); renderGrid(localGridWrap); return row;
 }
 
 function renderGrid(container){
