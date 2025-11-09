@@ -1,0 +1,25 @@
+{
+  "timestamp": "2025-11-09T06:57:20.255Z",
+  "environment": {
+    "configured": true,
+    "hasShopifyStore": true,
+    "hasShopifyToken": true,
+    "hasPrintfulKey": false
+  },
+  "assets": {
+    "artworks": 44,
+    "mockups": 7,
+    "brand": 4
+  },
+  "dependencies": {
+    "installed": true
+  },
+  "csvFiles": {
+    "shopifyProducts": true,
+    "printfulMapping": true
+  },
+  "nextSteps": [
+    "1. Run store setup: npm run setup",
+    "2. Generate product CSV: npm run gen-csv"
+  ]
+}

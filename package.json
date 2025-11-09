@@ -8,7 +8,9 @@
     "start": "node devmode_setup_all.js",
     "bootstrap": "node devmode_bootstrap.js",
     "setup": "node devmode_setup_all.js",
-    "gen-csv": "node gen_products_csv.mjs"
+    "gen-csv": "node gen_products_csv.mjs",
+    "check-status": "node check_store_status.mjs",
+    "install-hero": "node install_hero_banner.mjs"
   },
   "keywords": [
     "shopify",
