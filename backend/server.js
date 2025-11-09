@@ -1,6 +1,6 @@
 /**
  * POD Creator API
- * Version: 1.0.0
+ * Version: 1.0.1
  * Backend API for Print-on-Demand store creator
  */
 import express from "express";
@@ -35,7 +35,7 @@ app.use((req, res, next) => {
 app.get("/health", (_req, res) => res.json({
   ok: true,
   service: "pod-creator-api",
-  version: "1.0.0",
+  version: "1.0.1",
   timestamp: new Date().toISOString(),
   environment: {
     hasShopify: !!SHOPIFY_STORE && !!SHOPIFY_ACCESS_TOKEN,

@@ -21,7 +21,9 @@
       "Bash(gcloud run deploy:*)",
       "Bash(gcloud builds list:*)",
       "Bash(gcloud projects add-iam-policy-binding:*)",
-      "Bash(test:*)"
+      "Bash(test:*)",
+      "Bash(npm run bump-version:*)",
+      "Bash(powershell.exe -ExecutionPolicy Bypass -File ./configure_api_keys.ps1)"
     ],
     "deny": [],
     "ask": []
