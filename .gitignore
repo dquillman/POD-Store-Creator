@@ -36,3 +36,8 @@ credentials.json
 *.zip
 *.rar
 *.7z
+
+# Files with API keys/secrets
+shopify api.txt
+store apis.txt
+306798653079-r6quvkd1k4aikuvmog7ode.txt
