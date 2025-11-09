@@ -31,6 +31,18 @@ app.use((req, res, next) => {
   next();
 });
 
+// ---- Store Credentials Middleware ----
+// Allow frontend to override credentials via headers (for multi-store support)
+app.use((req, res, next) => {
+  req.storeCredentials = {
+    shopifyStore: req.headers['x-shopify-store'] || SHOPIFY_STORE,
+    shopifyAccessToken: req.headers['x-shopify-token'] || SHOPIFY_ACCESS_TOKEN,
+    printfulApiKey: req.headers['x-printful-key'] || PRINTFUL_API_KEY,
+    openaiApiKey: req.headers['x-openai-key'] || OPENAI_API_KEY
+  };
+  next();
+});
+
 // ---- Health ----
 app.get("/health", (_req, res) => res.json({
   ok: true,
@@ -47,15 +59,18 @@ app.get("/health", (_req, res) => res.json({
 // ---- Helper Functions ----
 
 // Shopify GraphQL helper
-async function shopifyGQL(query, variables = {}) {
-  if (!SHOPIFY_STORE || !SHOPIFY_ACCESS_TOKEN) {
+async function shopifyGQL(query, variables = {}, credentials) {
+  const shopifyStore = credentials?.shopifyStore || SHOPIFY_STORE;
+  const shopifyAccessToken = credentials?.shopifyAccessToken || SHOPIFY_ACCESS_TOKEN;
+
+  if (!shopifyStore || !shopifyAccessToken) {
     throw new Error('Shopify credentials not configured');
   }
 
-  const res = await fetch(`https://${SHOPIFY_STORE}/admin/api/2025-01/graphql.json`, {
+  const res = await fetch(`https://${shopifyStore}/admin/api/2025-01/graphql.json`, {
     method: 'POST',
     headers: {
-      'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
+      'X-Shopify-Access-Token': shopifyAccessToken,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({ query, variables })
@@ -70,16 +85,19 @@ async function shopifyGQL(query, variables = {}) {
 }
 
 // Shopify REST helper
-async function shopifyREST(method, endpoint, body) {
-  if (!SHOPIFY_STORE || !SHOPIFY_ACCESS_TOKEN) {
+async function shopifyREST(method, endpoint, body, credentials) {
+  const shopifyStore = credentials?.shopifyStore || SHOPIFY_STORE;
+  const shopifyAccessToken = credentials?.shopifyAccessToken || SHOPIFY_ACCESS_TOKEN;
+
+  if (!shopifyStore || !shopifyAccessToken) {
     throw new Error('Shopify credentials not configured');
   }
 
-  const url = `https://${SHOPIFY_STORE}/admin/api/2025-01${endpoint}`;
+  const url = `https://${shopifyStore}/admin/api/2025-01${endpoint}`;
   const res = await fetch(url, {
     method,
     headers: {
-      'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN,
+      'X-Shopify-Access-Token': shopifyAccessToken,
       'Content-Type': 'application/json'
     },
     body: body ? JSON.stringify(body) : undefined
@@ -95,8 +113,10 @@ async function shopifyREST(method, endpoint, body) {
 }
 
 // Printful API helper
-async function printfulAPI(method, endpoint, body) {
-  if (!PRINTFUL_API_KEY) {
+async function printfulAPI(method, endpoint, body, credentials) {
+  const printfulApiKey = credentials?.printfulApiKey || PRINTFUL_API_KEY;
+
+  if (!printfulApiKey) {
     throw new Error('Printful API key not configured');
   }
 
@@ -104,7 +124,7 @@ async function printfulAPI(method, endpoint, body) {
   const res = await fetch(url, {
     method,
     headers: {
-      'Authorization': `Bearer ${PRINTFUL_API_KEY}`,
+      'Authorization': `Bearer ${printfulApiKey}`,
       'Content-Type': 'application/json'
     },
     body: body ? JSON.stringify(body) : undefined
@@ -120,15 +140,17 @@ async function printfulAPI(method, endpoint, body) {
 }
 
 // OpenAI API helper
-async function openaiAPI(messages, options = {}) {
-  if (!OPENAI_API_KEY) {
+async function openaiAPI(messages, options = {}, credentials) {
+  const openaiApiKey = credentials?.openaiApiKey || OPENAI_API_KEY;
+
+  if (!openaiApiKey) {
     throw new Error('OpenAI API key not configured');
   }
 
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
+      'Authorization': `Bearer ${openaiApiKey}`,
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
@@ -225,7 +247,7 @@ Return only the list of trends, numbered 1-10.`;
     const response = await openaiAPI([
       { role: "system", content: "You are a design trend expert specializing in print-on-demand products." },
       { role: "user", content: prompt }
-    ]);
+    ], {}, req.storeCredentials);
 
     // Parse the numbered list
     const trends = response
@@ -281,7 +303,7 @@ Format: Simple list, one prompt per line, no numbering.`;
     const response = await openaiAPI([
       { role: "system", content: "You are a creative director for print-on-demand products." },
       { role: "user", content: prompt }
-    ]);
+    ], {}, req.storeCredentials);
 
     const prompts = response
       .split('\n')
@@ -340,7 +362,7 @@ app.post("/api/mockup", async (req, res) => {
       ]
     };
 
-    const result = await printfulAPI('POST', `/mockup-generator/create-task/${productId}`, taskData);
+    const result = await printfulAPI('POST', `/mockup-generator/create-task/${productId}`, taskData, req.storeCredentials);
 
     // Poll for result (Printful mockups are async)
     const taskId = result.result.task_key;
@@ -350,7 +372,7 @@ app.post("/api/mockup", async (req, res) => {
 
     while (attempts < maxAttempts && !mockups) {
       await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-      const taskResult = await printfulAPI('GET', `/mockup-generator/task?task_key=${taskId}`);
+      const taskResult = await printfulAPI('GET', `/mockup-generator/task?task_key=${taskId}`, undefined, req.storeCredentials);
 
       if (taskResult.result.status === 'completed') {
         mockups = taskResult.result.mockups.map(m => ({
@@ -417,12 +439,13 @@ app.post("/api/listing", async (req, res) => {
       }
     };
 
-    const result = await shopifyREST('POST', '/products.json', productData);
+    const result = await shopifyREST('POST', '/products.json', productData, req.storeCredentials);
 
+    const shopifyStore = req.storeCredentials?.shopifyStore || SHOPIFY_STORE;
     res.json({
       ok: true,
       listingId: result.product.id,
-      adminUrl: `https://${SHOPIFY_STORE}/admin/products/${result.product.id}`,
+      adminUrl: `https://${shopifyStore}/admin/products/${result.product.id}`,
       product: result.product
     });
   } catch (error) {
@@ -456,15 +479,16 @@ app.post("/api/publish", async (req, res) => {
         id: listingId,
         status: "active"
       }
-    });
+    }, req.storeCredentials);
 
+    const shopifyStore = req.storeCredentials?.shopifyStore || SHOPIFY_STORE;
     const handle = result.product.handle;
-    const storeUrl = `https://${SHOPIFY_STORE.replace('.myshopify.com', '')}/products/${handle}`;
+    const storeUrl = `https://${shopifyStore.replace('.myshopify.com', '')}/products/${handle}`;
 
     res.json({
       ok: true,
       url: storeUrl,
-      adminUrl: `https://${SHOPIFY_STORE}/admin/products/${listingId}`,
+      adminUrl: `https://${shopifyStore}/admin/products/${listingId}`,
       product: result.product
     });
   } catch (error) {

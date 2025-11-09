@@ -1,0 +1,8 @@
+{
+  "name": "DevMode Store",
+  "shopifyStore": "dev-mode-4.myshopify.com",
+  "shopifyAccessToken": "your-shopify-access-token-here",
+  "printfulApiKey": "your-printful-api-key-here",
+  "openaiApiKey": "your-openai-api-key-here",
+  "notes": "Store configuration for POD Creator. Export this from the app after configuring your first store, then you can quickly switch between multiple stores by loading different config files."
+}

@@ -88,6 +88,14 @@
       </svg>
     </button>
     <span id="updateStatus" class="muted"></span>
+    <div class="inline" style="margin-left:auto;">
+      <span class="muted">Store:</span>
+      <span id="currentStoreName" class="pill" style="font-weight:600;">No Store Loaded</span>
+      <button id="btnLoadStore" class="btn" title="Load store configuration">Load Store</button>
+      <button id="btnExportStore" class="btn" title="Export current store configuration">Export Store</button>
+    </div>
+  </div>
+  <div style="margin-bottom:16px;">
     <span class="pill">Style A: DevMode 105px · Slogan 400px · #FFF · Transparent · Left-aligned</span>
   </div>
 
@@ -111,11 +119,22 @@ const API_URL = window.location.hostname === 'storage.googleapis.com'
    ========================= */
 async function apiCall(endpoint, options = {}) {
   const url = `${API_URL}${endpoint}`;
+
+  // Include store credentials in headers if available
+  const storeHeaders = {};
+  if (currentStore) {
+    if (currentStore.shopifyStore) storeHeaders['X-Shopify-Store'] = currentStore.shopifyStore;
+    if (currentStore.shopifyAccessToken) storeHeaders['X-Shopify-Token'] = currentStore.shopifyAccessToken;
+    if (currentStore.printfulApiKey) storeHeaders['X-Printful-Key'] = currentStore.printfulApiKey;
+    if (currentStore.openaiApiKey) storeHeaders['X-OpenAI-Key'] = currentStore.openaiApiKey;
+  }
+
   try {
     const res = await fetch(url, {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...storeHeaders,
         ...options.headers
       }
     });
@@ -167,6 +186,95 @@ function toggleTheme() {
 
 document.getElementById('btnThemeToggle').onclick = toggleTheme;
 initTheme();
+
+/* =========================
+   Store Management
+   ========================= */
+let currentStore = null;
+
+// Initialize store from localStorage
+function initStore() {
+  const savedStore = localStorage.getItem('pod-creator-store');
+  if (savedStore) {
+    try {
+      currentStore = JSON.parse(savedStore);
+      updateStoreDisplay();
+    } catch (e) {
+      console.error('Failed to load saved store:', e);
+    }
+  }
+}
+
+function updateStoreDisplay() {
+  const nameEl = document.getElementById('currentStoreName');
+  if (currentStore) {
+    nameEl.textContent = currentStore.name || currentStore.shopifyStore || 'Store Loaded';
+    nameEl.style.background = 'var(--accent)';
+    nameEl.style.color = '#fff';
+  } else {
+    nameEl.textContent = 'No Store Loaded';
+    nameEl.style.background = 'var(--btn-bg)';
+    nameEl.style.color = 'var(--fg)';
+  }
+}
+
+// Load store configuration from JSON file
+function loadStore() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const config = JSON.parse(text);
+
+      // Validate required fields
+      if (!config.shopifyStore || !config.shopifyAccessToken) {
+        toast('Invalid store config: Missing shopifyStore or shopifyAccessToken');
+        return;
+      }
+
+      currentStore = config;
+      localStorage.setItem('pod-creator-store', JSON.stringify(config));
+      updateStoreDisplay();
+      toast(`Store "${config.name || config.shopifyStore}" loaded successfully!`);
+    } catch (err) {
+      toast('Failed to load store config: ' + err.message);
+      console.error(err);
+    }
+  };
+  input.click();
+}
+
+// Export current store configuration
+function exportStore() {
+  if (!currentStore) {
+    toast('No store to export. Load a store first.');
+    return;
+  }
+
+  const json = JSON.stringify(currentStore, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${currentStore.name || currentStore.shopifyStore || 'store'}-config.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Store configuration exported!');
+}
+
+// Get current store credentials for API calls
+function getStoreCredentials() {
+  return currentStore || {};
+}
+
+document.getElementById('btnLoadStore').onclick = loadStore;
+document.getElementById('btnExportStore').onclick = exportStore;
+initStore();
 
 /* =========================
    Specs for both tools
