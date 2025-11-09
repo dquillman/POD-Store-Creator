@@ -25,7 +25,14 @@
       "Bash(npm run bump-version:*)",
       "Bash(powershell.exe -ExecutionPolicy Bypass -File ./configure_api_keys.ps1)",
       "Bash(powershell.exe -ExecutionPolicy Bypass -File ./deploy_backend.ps1)",
-      "Bash(python -m http.server:*)"
+      "Bash(python -m http.server:*)",
+      "Bash(gsutil ls:*)",
+      "Bash(gsutil stat:*)",
+      "Bash(gsutil -m rsync:*)",
+      "Bash(gsutil -m setmeta:*)",
+      "Bash(gsutil cp:*)",
+      "Bash(gcloud storage cp:*)",
+      "Bash(gcloud auth list:*)"
     ],
     "deny": [],
     "ask": []
