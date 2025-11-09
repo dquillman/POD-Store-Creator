@@ -1,3 +1,8 @@
+/**
+ * POD Creator API
+ * Version: 1.0.0
+ * Backend API for Print-on-Demand store creator
+ */
 import express from "express";
 import cors from "cors";
 
