@@ -20,7 +20,8 @@
       "Bash(npm run check-status:*)",
       "Bash(gcloud run deploy:*)",
       "Bash(gcloud builds list:*)",
-      "Bash(gcloud projects add-iam-policy-binding:*)"
+      "Bash(gcloud projects add-iam-policy-binding:*)",
+      "Bash(test:*)"
     ],
     "deny": [],
     "ask": []
