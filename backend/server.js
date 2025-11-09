@@ -16,7 +16,12 @@ app.use(cors({
 app.use(express.json({ limit: "10mb" }));
 
 // ---- Health ----
-app.get("/health", (_req, res) => res.json({ ok: true, service: "pod-creator-api" }));
+app.get("/health", (_req, res) => res.json({
+  ok: true,
+  service: "pod-creator-api",
+  version: "1.0.0",
+  timestamp: new Date().toISOString()
+}));
 
 // ---- Stubs (wire these to real providers later) ----
 
