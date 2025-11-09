@@ -179,6 +179,10 @@ let gridWrap=null;
 
 function renderAuditTab(){
   const row = el('div',{class:'row'});
+  // Create gridWrap first
+  const localGridWrap = el('div',{style:'margin-top:12px;'});
+  gridWrap = localGridWrap; // Assign to global
+
   // Left
   const left = el('div',{class:'panel'},[
     el('h2',{},'Upload & Inspect'),
@@ -195,7 +199,7 @@ function renderAuditTab(){
     el('div',{style:'margin-top:8px;'},[
       el('button',{class:'btn',onclick:async()=>{ await runChecks(); renderGrid(gridWrap); }},'Run Checks')
     ]),
-    (gridWrap=el('div',{style:'margin-top:12px;'}))
+    localGridWrap
   ]);
   // Right
   const right = el('div',{class:'panel'},[

@@ -18,7 +18,8 @@
       "Bash(powershell.exe -ExecutionPolicy Bypass -File setup_workload_identity.ps1)",
       "Bash(exit 0)",
       "Bash(npm run check-status:*)",
-      "Bash(gcloud run deploy:*)"
+      "Bash(gcloud run deploy:*)",
+      "Bash(gcloud builds list:*)"
     ],
     "deny": [],
     "ask": []
