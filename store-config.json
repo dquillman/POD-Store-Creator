@@ -1,0 +1,7 @@
+{
+  "name": "DevMode Store",
+  "shopifyStore": "dev-mode-4.myshopify.com",
+  "shopifyAccessToken": "YOUR_REAL_SHOPIFY_TOKEN_HERE",
+  "printfulApiKey": "YOUR_REAL_PRINTFUL_KEY_HERE",
+  "openaiApiKey": "YOUR_REAL_OPENAI_KEY_HERE"
+}

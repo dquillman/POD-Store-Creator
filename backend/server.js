@@ -3,6 +3,7 @@
  * Version: 1.0.1
  * Backend API for Print-on-Demand store creator
  */
+import 'dotenv/config';
 import express from "express";
 import cors from "cors";
 

@@ -49,7 +49,17 @@
       "Bash(git push:*)",
       "Bash(git pull:*)",
       "Bash(temp_check.js)",
-      "Bash(netstat:*)"
+      "Bash(netstat:*)",
+      "Bash(curl:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(timeout 5 curl:*)",
+      "Bash(npm start)",
+      "Bash(taskkill:*)",
+      "Bash(wmic process where \"ProcessId=5528\" get Name,ProcessId,CommandLine 2)",
+      "Bash(nul)",
+      "Bash(tasklist:*)",
+      "Bash(wmic process where \"name like ''''%node%''''\" get Name,ProcessId,CommandLine 2)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []
