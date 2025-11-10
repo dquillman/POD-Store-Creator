@@ -398,7 +398,7 @@ function renderGrid(container){
       el('td',{},el('span',{class:r.sizeOk?'good':'bad'},r.sizeOk?'OK':'Mismatch')),
       el('td',{},el('span',{class:r.styleAOk?'good':'bad'},r.styleAOk?'OK':'Check')),
       el('td',{},[
-        el('button',{class:'btn',onclick:()=>preview(idx)},'Preview'),
+        el('button',{class:'btn',onclick:()=>{console.log('Preview clicked, idx='+idx, checks[idx]); preview(idx);}},'Preview'),
         el('button',{class:'btn',onclick:()=>removeBG(idx,'white')},'Remove BG (white)'),
         el('button',{class:'btn',onclick:()=>removeBG(idx,'black')},'Remove BG (black)'),
         el('button',{class:'btn',onclick:()=>exportPNG(idx)},'Export Clean')
