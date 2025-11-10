@@ -1009,21 +1009,83 @@ async function renderStoreTab(){
    Settings
    ========================= */
 function renderSettingsTab(){
-  const wrap = el('div',{class:'panel'},[
-    el('h2',{},'Settings'),
+  const container = el('div', {style:'display:flex;flex-direction:column;gap:16px;'});
+
+  // General Settings Panel
+  const generalPanel = el('div',{class:'panel'},[
+    el('h2',{},'General Settings'),
     labeled('DevMode font size (px)', String(settings.fontSizeDevMode), v=>settings.fontSizeDevMode=Number(v)),
     labeled('Slogan font size (px)', String(settings.fontSizeSlogan), v=>settings.fontSizeSlogan=Number(v)),
     labeled('Line height (em)', String(settings.lineHeight), v=>settings.lineHeight=Number(v)),
     labeled('BG detect tolerance (0–255)', String(settings.maxBgDelta), v=>settings.maxBgDelta=Number(v)),
-    el('div',{class:'help',style:'margin-top:6px;'},'Note: PNGs don’t reliably store DPI; 4500×5400 px is interpreted as 300 DPI at print.')
+    el('div',{class:'help',style:'margin-top:6px;'},'Note: PNGs don't reliably store DPI; 4500×5400 px is interpreted as 300 DPI at print.')
   ]);
-  return wrap;
+
+  // Style A Heuristic Panel
+  const styleAPanel = el('div',{class:'panel'},[
+    el('h2',{},'Style A Heuristic Settings'),
+    el('div',{class:'help',style:'margin-bottom:12px;'},'Customize how the "Style A" check validates your designs. Click "Recheck All" after changing settings.'),
+
+    el('h3',{style:'font-size:14px;margin:16px 0 8px;font-weight:600;'},'White Pixel Detection'),
+    labeled('White color tolerance (0–255)', String(settings.styleA_whiteTolerance), v=>settings.styleA_whiteTolerance=Number(v)),
+    el('div',{class:'help',style:'margin-left:268px;margin-top:-4px;margin-bottom:8px;'},'Lower = stricter white detection. 0 = pure #FFFFFF only, 16 = slight gray allowed'),
+
+    labeled('Min white pixels required', String(settings.styleA_minWhitePixels), v=>settings.styleA_minWhitePixels=Number(v)),
+    el('div',{class:'help',style:'margin-left:268px;margin-top:-4px;margin-bottom:8px;'},'How many white pixels must be found in scan region'),
+
+    el('h3',{style:'font-size:14px;margin:16px 0 8px;font-weight:600;'},'Scan Region (from top-left)'),
+    labeled('Scan width (px)', String(settings.styleA_scanWidth), v=>settings.styleA_scanWidth=Number(v)),
+    labeled('Scan height (px)', String(settings.styleA_scanHeight), v=>settings.styleA_scanHeight=Number(v)),
+    el('div',{class:'help',style:'margin-left:268px;margin-top:-4px;margin-bottom:8px;'},'Area to check for white pixels. Default: 800×400 (top-left region)'),
+
+    el('h3',{style:'font-size:14px;margin:16px 0 8px;font-weight:600;'},'Requirements'),
+    labeledCheckbox('Require transparency', settings.styleA_requireTransparency, v=>settings.styleA_requireTransparency=v),
+    labeledCheckbox('Require no background detected', settings.styleA_requireNoBg, v=>settings.styleA_requireNoBg=v),
+
+    el('div',{style:'margin-top:16px;display:flex;gap:8px;'},[
+      el('button',{class:'btn',style:'background:var(--accent);color:#fff;',onclick:recheckAll},'🔄 Recheck All Files'),
+      el('button',{class:'btn',onclick:resetStyleADefaults},'↺ Reset to Defaults')
+    ])
+  ]);
+
+  container.appendChild(generalPanel);
+  container.appendChild(styleAPanel);
+  return container;
 
   function labeled(label,value,onchange){
     const input = el('input',{class:'input',value,style:'width:140px;'});
     input.onchange = e=>onchange(e.target.value);
     return el('div',{style:'margin:8px 0;display:flex;align-items:center;gap:8px;'},
       [ el('div',{style:'width:260px;'},label), input ]);
+  }
+
+  function labeledCheckbox(label,checked,onchange){
+    const checkbox = el('input',{type:'checkbox',checked:checked?'checked':null,style:'width:20px;height:20px;cursor:pointer;'});
+    checkbox.onchange = e=>onchange(e.target.checked);
+    return el('div',{style:'margin:8px 0;display:flex;align-items:center;gap:8px;'},
+      [ el('div',{style:'width:260px;'},label), checkbox ]);
+  }
+
+  async function recheckAll(){
+    if(files.length === 0){
+      toast('No files to recheck. Upload files first.');
+      return;
+    }
+    await runChecks();
+    const gridWrap = document.querySelector('#content .panel .row > div:first-child > div:last-child');
+    if(gridWrap) renderGrid(gridWrap);
+    toast('All files rechecked with new settings!');
+  }
+
+  function resetStyleADefaults(){
+    settings.styleA_whiteTolerance = 16;
+    settings.styleA_minWhitePixels = 100;
+    settings.styleA_scanWidth = 800;
+    settings.styleA_scanHeight = 400;
+    settings.styleA_requireTransparency = true;
+    settings.styleA_requireNoBg = true;
+    toast('Reset to default Style A settings');
+    switchTab(2); // Re-render settings tab
   }
 }
 
