@@ -108,7 +108,7 @@ console.log('POD Creator JavaScript is loading...');
 /* =========================
    Configuration
    ========================= */
-const LOCAL_VERSION = '1.0.6';
+const LOCAL_VERSION = '1.0.8';
 console.log('POD Creator v' + LOCAL_VERSION + ' loaded successfully!');
 const UPDATE_URL = 'https://raw.githubusercontent.com/dquillman/POD-Store-Creator/main/frontend/updates.json';
 // Backend API URL - will be auto-detected from Cloud Run or can be set manually
@@ -387,12 +387,14 @@ function renderAuditTab(){
 }
 
 function renderGrid(container){
+  console.log('renderGrid called with', checks.length, 'files');
   const wrap=el('div');
   const table=el('table',{class:'grid'});
   const head=el('tr',{},['File','Transparency','Background Detected','4500×5400','Style A Heuristic','Actions'].map(h=>el('th',{},h)));
   table.appendChild(el('thead',{},head));
   const body=el('tbody');
   checks.forEach((r,idx)=>{
+    console.log('Creating row', idx, 'for file:', r.name);
     const tr=el('tr',{},[
       el('td',{},r.name),
       el('td',{},el('span',{class:r.hasTransparency?'good':'bad'},r.hasTransparency?'Yes':'No')),

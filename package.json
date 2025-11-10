@@ -1,6 +1,6 @@
 {
   "name": "devmode-shopify-scripts",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Shopify automation scripts for Dev Mode store setup and Printful integration",
   "type": "module",
   "main": "devmode_setup_all.js",
