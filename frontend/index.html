@@ -280,7 +280,7 @@
 /* =========================
    VERSION - CHANGE ONLY HERE!
    ========================= */
-const VERSION = '1.0.20';
+const VERSION = '1.0.21';
 
 /* =========================
    Configuration
@@ -297,10 +297,12 @@ setTimeout(() => {
   if (badge) badge.textContent = `v${VERSION}`;
 }, 0);
 const UPDATE_URL = 'https://raw.githubusercontent.com/dquillman/POD-Store-Creator/main/frontend/updates.json';
-// Backend API URL - will be auto-detected from Cloud Run or can be set manually
-const API_URL = window.location.hostname === 'storage.googleapis.com'
-  ? 'https://pod-creator-api-508544473305.us-central1.run.app'
-  : 'http://localhost:8081';
+// Backend API URL - Use localhost for local files, Cloud Run for deployed
+const isLocalFile = window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const API_URL = isLocalFile
+  ? 'http://localhost:8081'
+  : 'https://pod-creator-api-508544473305.us-central1.run.app';
+console.log('API_URL detected:', API_URL, '(isLocalFile:', isLocalFile, ', hostname:', window.location.hostname, ', protocol:', window.location.protocol, ')');
 
 /* =========================
    API Helper
