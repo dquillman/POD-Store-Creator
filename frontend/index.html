@@ -280,7 +280,7 @@
 /* =========================
    VERSION - CHANGE ONLY HERE!
    ========================= */
-const VERSION = '1.0.18';
+const VERSION = '1.0.19';
 
 /* =========================
    Configuration
@@ -1044,7 +1044,7 @@ async function renderStoreTab(){
   return el('div', {class:'panel'}, [
     el('h2', {}, 'Store Setup Flow'),
     status ? statsDiv : el('div', {class:'help', style:'margin-bottom:16px;background:#fef3c7;color:#92400e;padding:12px;border-radius:8px;'},
-      'Run npm run check-status to auto-detect completion status'),
+      'Click the Run Check Status button below to auto-detect completion status'),
     list,
     actions,
     el('div', {class:'help', style:'margin-top:12px;'},
@@ -1991,6 +1991,7 @@ async function generateSingleDesign() {
     toast('Generating design with DALL-E...');
 
     // Step 1: Generate design with DALL-E
+    console.log('[T-Shirt Designer] Calling DALL-E with prompt:', tshirtState.prompt);
     const designResult = await apiCall('/api/generate-design', {
       method: 'POST',
       body: JSON.stringify({
@@ -2001,9 +2002,11 @@ async function generateSingleDesign() {
       })
     });
 
+    console.log('[T-Shirt Designer] DALL-E result:', designResult);
     toast('Design created! Generating mockup...');
 
     // Step 2: Generate mockup with Printful
+    console.log('[T-Shirt Designer] Calling Printful mockup with image:', designResult.imageUrl);
     const mockupResult = await apiCall('/api/mockup', {
       method: 'POST',
       body: JSON.stringify({
@@ -2012,6 +2015,8 @@ async function generateSingleDesign() {
         variantId: 4012
       })
     });
+
+    console.log('[T-Shirt Designer] Mockup result:', mockupResult);
 
     // Create a new design object and add to queue
     const newDesign = {
@@ -2027,10 +2032,13 @@ async function generateSingleDesign() {
       mockups: mockupResult.mockups || []
     };
 
+    console.log('[T-Shirt Designer] Created design object:', newDesign);
+
     // Add to beginning of queue and make it active
     tshirtState.designQueue.unshift(newDesign);
     tshirtState.activeDesign = newDesign.id;
 
+    console.log('[T-Shirt Designer] Design added to queue. Refreshing UI...');
     toast('✅ Design complete! Check the preview panel →');
     refreshTShirtUI();
 
