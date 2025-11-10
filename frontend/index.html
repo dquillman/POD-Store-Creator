@@ -1024,7 +1024,7 @@ function renderSettingsTab(){
   // Style A Heuristic Panel
   const styleAPanel = el('div',{class:'panel'},[
     el('h2',{},'Style A Heuristic Settings'),
-    el('div',{class:'help',style:'margin-bottom:12px;'},'Customize how the "Style A" check validates your designs. Click "Recheck All" after changing settings.'),
+    el('div',{class:'help',style:'margin-bottom:12px;'},'Customize how the Style A check validates your designs. Click Recheck All after changing settings.'),
 
     el('h3',{style:'font-size:14px;margin:16px 0 8px;font-weight:600;'},'White Pixel Detection'),
     labeled('White color tolerance (0–255)', String(settings.styleA_whiteTolerance), v=>settings.styleA_whiteTolerance=Number(v)),
