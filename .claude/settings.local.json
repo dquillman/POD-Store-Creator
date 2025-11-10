@@ -37,7 +37,8 @@
       "Bash(cmd.exe /c start chrome \"file:///G:/Users/daveq/DevMode_Shopify_Scripts/frontend/index.html\")",
       "Bash(dir:*)",
       "Bash(node bump_version.mjs:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(gsutil setmeta:*)"
     ],
     "deny": [],
     "ask": []
