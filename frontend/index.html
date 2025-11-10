@@ -1017,7 +1017,7 @@ function renderSettingsTab(){
     labeled('DevMode font size (px)', String(settings.fontSizeDevMode), v=>settings.fontSizeDevMode=Number(v)),
     labeled('Slogan font size (px)', String(settings.fontSizeSlogan), v=>settings.fontSizeSlogan=Number(v)),
     labeled('Line height (em)', String(settings.lineHeight), v=>settings.lineHeight=Number(v)),
-    labeled('BG detect tolerance (0–255)', String(settings.maxBgDelta), v=>settings.maxBgDelta=Number(v)),
+    labeled('BG detect tolerance (0-255)', String(settings.maxBgDelta), v=>settings.maxBgDelta=Number(v)),
     el('div',{class:'help',style:'margin-top:6px;'},'Note: PNGs don't reliably store DPI; 4500×5400 px is interpreted as 300 DPI at print.')
   ]);
 
@@ -1027,7 +1027,7 @@ function renderSettingsTab(){
     el('div',{class:'help',style:'margin-bottom:12px;'},'Customize how the Style A check validates your designs. Click Recheck All after changing settings.'),
 
     el('h3',{style:'font-size:14px;margin:16px 0 8px;font-weight:600;'},'White Pixel Detection'),
-    labeled('White color tolerance (0–255)', String(settings.styleA_whiteTolerance), v=>settings.styleA_whiteTolerance=Number(v)),
+    labeled('White color tolerance (0-255)', String(settings.styleA_whiteTolerance), v=>settings.styleA_whiteTolerance=Number(v)),
     el('div',{class:'help',style:'margin-left:268px;margin-top:-4px;margin-bottom:8px;'},'Lower = stricter white detection. 0 = pure #FFFFFF only, 16 = slight gray allowed'),
 
     labeled('Min white pixels required', String(settings.styleA_minWhitePixels), v=>settings.styleA_minWhitePixels=Number(v)),

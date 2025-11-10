@@ -46,7 +46,8 @@
       "Bash(git commit -m \"$(cat <<''EOF''\nAdd fully functional T-Shirt Designer with AI generation (v1.0.14)\n\n- Add DALL-E 3 integration for t-shirt design generation\n- Add Printful mockup generator integration\n- Implement real-time preview with Front/Detail/Lifestyle tabs\n- Add Accept/Reject workflow for design approval\n- Add download buttons for PNG designs and mockups\n- Add \"Generate This Design Now\" instant generation button\n- Add customizable Style A Heuristic settings in Asset Audit\n- Add sortable table columns in Asset Audit\n- Fix missing <style> tags causing CSS to display as text\n- Add comprehensive quickstart guide\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(findstr:*)",
       "Bash(git commit:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(git pull:*)"
     ],
     "deny": [],
     "ask": []
