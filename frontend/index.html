@@ -1643,6 +1643,13 @@ function renderPromptBuilder() {
           ]),
           el('input', { id: 'tshirt-whitepoint', type: 'range', min: '0', max: '100', value: tshirtState.whitePoint, style: 'width:100%;' })
         ])
+      ]),
+      el('div', { style: 'margin-top:16px;' }, [
+        el('button', {
+          id: 'tshirt-generate-single',
+          class: 'btn',
+          style: 'width:100%;background:var(--ok);color:#fff;padding:12px;font-weight:600;font-size:14px;'
+        }, '🎨 Generate This Design Now')
       ])
     ])
   ]);
@@ -1676,6 +1683,12 @@ function renderPromptBuilder() {
       tshirtState.whitePoint = parseInt(e.target.value);
       document.getElementById('tshirt-whitepoint-val').textContent = tshirtState.whitePoint + '%';
     };
+
+    // Wire up "Generate This Design Now" button
+    const generateBtn = document.getElementById('tshirt-generate-single');
+    if (generateBtn) {
+      generateBtn.onclick = () => generateSingleDesign();
+    }
   }, 0);
 
   return panel;
@@ -1914,6 +1927,75 @@ function refreshTShirtUI() {
   if (content && spec.appId === 'wescale-pod-console') {
     content.innerHTML = '';
     content.appendChild(renderTShirtDesigner());
+  }
+}
+
+// Generate a single design immediately (no queue)
+async function generateSingleDesign() {
+  const generateBtn = document.getElementById('tshirt-generate-single');
+
+  if (generateBtn) {
+    generateBtn.disabled = true;
+    generateBtn.textContent = '⏳ Generating...';
+    generateBtn.style.background = 'var(--muted)';
+  }
+
+  try {
+    toast('Generating design with DALL-E...');
+
+    // Step 1: Generate design with DALL-E
+    const designResult = await apiCall('/api/generate-design', {
+      method: 'POST',
+      body: JSON.stringify({
+        prompt: tshirtState.prompt,
+        negativePrompt: tshirtState.negativePrompt,
+        size: '1024x1024',
+        style: 'natural'
+      })
+    });
+
+    toast('Design created! Generating mockup...');
+
+    // Step 2: Generate mockup with Printful
+    const mockupResult = await apiCall('/api/mockup', {
+      method: 'POST',
+      body: JSON.stringify({
+        imageUrl: designResult.imageUrl,
+        productId: 71,
+        variantId: 4012
+      })
+    });
+
+    // Create a new design object and add to queue
+    const newDesign = {
+      id: `design-${Date.now()}`,
+      title: `${tshirtState.collection} — ${new Date().toLocaleTimeString()}`,
+      brand: tshirtState.collection,
+      aspect: tshirtState.size,
+      bg: tshirtState.bg,
+      model: tshirtState.model,
+      status: 'ready',
+      designUrl: designResult.imageUrl,
+      revisedPrompt: designResult.revised_prompt,
+      mockups: mockupResult.mockups || []
+    };
+
+    // Add to beginning of queue and make it active
+    tshirtState.designQueue.unshift(newDesign);
+    tshirtState.activeDesign = newDesign.id;
+
+    toast('✅ Design complete! Check the preview panel →');
+    refreshTShirtUI();
+
+  } catch (error) {
+    console.error('Single design generation failed:', error);
+    toast('❌ Generation failed: ' + error.message);
+  } finally {
+    if (generateBtn) {
+      generateBtn.disabled = false;
+      generateBtn.textContent = '🎨 Generate This Design Now';
+      generateBtn.style.background = 'var(--ok)';
+    }
   }
 }
 
