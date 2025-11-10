@@ -1783,14 +1783,48 @@ function renderPreviewPanel() {
     if (tabLifestyle) tabLifestyle.onclick = () => { tshirtState.previewTab = 'lifestyle'; refreshTShirtUI(); };
   }, 0);
 
-  // Footer buttons
-  const footer = el('div', { style: 'margin-top:12px;display:flex;justify-content:space-between;gap:8px;' }, [
-    el('button', { class: 'btn' }, '🖼️ Swap Mock'),
-    el('div', { style: 'display:flex;gap:8px;' }, [
-      el('button', { class: 'btn' }, 'PNG'),
-      el('button', { class: 'btn', style: 'background:var(--accent);color:#fff;' }, '📥 Export')
-    ])
-  ]);
+  // Footer buttons with Accept/Reject
+  const footer = el('div', { style: 'margin-top:12px;' });
+
+  setTimeout(() => {
+    const activeDesign = tshirtState.designQueue.find(d => d.id === tshirtState.activeDesign);
+
+    footer.innerHTML = '';
+
+    if (activeDesign && activeDesign.status === 'ready') {
+      // Accept/Reject workflow
+      const btnGroup = el('div', { style: 'display:flex;gap:8px;justify-content:space-between;' }, [
+        el('button', {
+          class: 'btn',
+          style: 'background:var(--bad);color:#fff;flex:1;',
+          onclick: () => rejectDesign(activeDesign.id)
+        }, '❌ Reject'),
+        el('button', {
+          class: 'btn',
+          style: 'background:var(--ok);color:#fff;flex:1;',
+          onclick: () => acceptDesign(activeDesign.id)
+        }, '✅ Accept')
+      ]);
+
+      const exportGroup = el('div', { style: 'display:flex;gap:8px;margin-top:8px;' }, [
+        el('button', {
+          class: 'btn',
+          onclick: () => downloadDesign(activeDesign)
+        }, '💾 Download PNG'),
+        el('button', {
+          class: 'btn',
+          style: 'background:var(--accent);color:#fff;',
+          onclick: () => downloadMockup(activeDesign)
+        }, '📥 Download Mockup')
+      ]);
+
+      footer.appendChild(btnGroup);
+      footer.appendChild(exportGroup);
+    } else {
+      footer.appendChild(el('div', { class: 'help', style: 'text-align:center;padding:12px;' }, 'Render a design to see accept/reject options'));
+    }
+  }, 0);
+
   panel.appendChild(footer);
 
   return panel;
@@ -1804,18 +1838,52 @@ function updatePreviewContent() {
   const title = activeDesign?.title || 'No selection';
 
   previewContent.innerHTML = '';
+  previewContent.style.padding = '0';
 
-  if (tshirtState.previewTab === 'front') {
-    previewContent.appendChild(el('div', { style: 'font-size:48px;' }, '👕'));
+  if (!activeDesign || activeDesign.status === 'queued') {
+    previewContent.style.padding = '24px';
+    previewContent.appendChild(el('div', { style: 'font-size:48px;' }, '⏳'));
     previewContent.appendChild(el('p', { style: 'font-weight:600;' }, title));
-    previewContent.appendChild(el('p', { style: 'font-size:12px;color:var(--muted);' }, `${tshirtState.bg.toUpperCase()} • ${tshirtState.size}`));
-  } else if (tshirtState.previewTab === 'detail') {
-    previewContent.appendChild(el('div', { style: 'font-size:48px;' }, '🔍'));
-    previewContent.appendChild(el('p', { style: 'font-size:14px;color:var(--muted);' }, 'Texture & print detail preview'));
-  } else if (tshirtState.previewTab === 'lifestyle') {
+    previewContent.appendChild(el('p', { style: 'font-size:12px;color:var(--muted);' }, activeDesign?.status === 'queued' ? 'Waiting to render...' : 'No design selected'));
+    return;
+  }
+
+  if (activeDesign.status === 'error') {
+    previewContent.style.padding = '24px';
+    previewContent.appendChild(el('div', { style: 'font-size:48px;' }, '❌'));
+    previewContent.appendChild(el('p', { style: 'font-weight:600;color:var(--bad);' }, 'Generation Failed'));
+    previewContent.appendChild(el('p', { style: 'font-size:12px;color:var(--muted);' }, activeDesign.error || 'Unknown error'));
+    return;
+  }
+
+  // Show rendered images
+  if (tshirtState.previewTab === 'front' && activeDesign.mockups && activeDesign.mockups.length > 0) {
+    const frontMockup = activeDesign.mockups.find(m => m.placement === 'front') || activeDesign.mockups[0];
+    const img = el('img', {
+      src: frontMockup.url,
+      style: 'width:100%;height:100%;object-fit:contain;border-radius:16px;',
+      alt: 'T-shirt mockup'
+    });
+    previewContent.appendChild(img);
+  } else if (tshirtState.previewTab === 'detail' && activeDesign.designUrl) {
+    const img = el('img', {
+      src: activeDesign.designUrl,
+      style: 'width:100%;height:100%;object-fit:contain;border-radius:16px;background:var(--input-bg);',
+      alt: 'Design detail'
+    });
+    previewContent.appendChild(img);
+  } else if (tshirtState.previewTab === 'lifestyle' && activeDesign.mockups && activeDesign.mockups.length > 0) {
+    const lifestyleMockup = activeDesign.mockups.find(m => m.placement === 'lifestyle') || activeDesign.mockups[0];
+    const img = el('img', {
+      src: lifestyleMockup.url,
+      style: 'width:100%;height:100%;object-fit:contain;border-radius:16px;',
+      alt: 'Lifestyle mockup'
+    });
+    previewContent.appendChild(img);
+  } else {
+    previewContent.style.padding = '24px';
     previewContent.appendChild(el('div', { style: 'font-size:48px;' }, '📸'));
-    previewContent.appendChild(el('p', { style: 'font-size:14px;color:var(--muted);' },
-      `${tshirtState.model === 'rotate' ? 'Rotating models' : tshirtState.model + ' model'} in ${tshirtState.bg} background`));
+    previewContent.appendChild(el('p', { style: 'font-size:14px;color:var(--muted);' }, 'No preview available for this view'));
   }
 }
 
@@ -1849,38 +1917,101 @@ function refreshTShirtUI() {
   }
 }
 
-function startBatch() {
+async function startBatch() {
   tshirtState.running = true;
   tshirtState.progress = 0;
 
-  batchInterval = setInterval(() => {
-    tshirtState.progress = Math.min(100, tshirtState.progress + Math.random() * 8);
-
-    // Update progress UI
+  const updateProgress = (pct, text) => {
+    tshirtState.progress = pct;
     const progressFill = document.getElementById('tshirt-progress-fill');
     const progressText = document.getElementById('tshirt-progress-text');
     const batchBtn = document.getElementById('tshirt-batch-btn');
 
-    if (progressFill) progressFill.style.width = tshirtState.progress + '%';
-    if (progressText) progressText.textContent = `Rendering… ${Math.round(tshirtState.progress)}%`;
+    if (progressFill) progressFill.style.width = pct + '%';
+    if (progressText) progressText.textContent = text || `Rendering… ${Math.round(pct)}%`;
     if (batchBtn) {
       batchBtn.textContent = '⏸️ Pause';
       batchBtn.style.background = 'var(--muted)';
     }
+  };
 
-    if (tshirtState.progress >= 100) {
+  try {
+    const queuedItems = tshirtState.designQueue.filter(d => d.status === 'queued');
+
+    if (queuedItems.length === 0) {
+      toast('No queued designs to render');
       stopBatch();
+      return;
+    }
 
-      // Mark next queued item as ready
-      const idx = tshirtState.designQueue.findIndex(d => d.status !== 'ready');
-      if (idx !== -1) {
-        tshirtState.designQueue[idx].status = 'ready';
-        refreshTShirtUI();
+    const total = queuedItems.length;
+
+    for (let i = 0; i < queuedItems.length; i++) {
+      if (!tshirtState.running) break; // User paused
+
+      const design = queuedItems[i];
+      const progressPct = (i / total) * 100;
+
+      updateProgress(progressPct, `Generating design ${i + 1}/${total}...`);
+
+      try {
+        // Step 1: Generate design with DALL-E
+        const designResult = await apiCall('/api/generate-design', {
+          method: 'POST',
+          body: JSON.stringify({
+            prompt: tshirtState.prompt,
+            negativePrompt: tshirtState.negativePrompt,
+            size: '1024x1024',
+            style: 'natural'
+          })
+        });
+
+        design.designUrl = designResult.imageUrl;
+        design.revisedPrompt = designResult.revised_prompt;
+
+        updateProgress(progressPct + (30 / total), `Creating mockup ${i + 1}/${total}...`);
+
+        // Step 2: Generate mockup with Printful
+        const mockupResult = await apiCall('/api/mockup', {
+          method: 'POST',
+          body: JSON.stringify({
+            imageUrl: design.designUrl,
+            productId: 71,
+            variantId: 4012
+          })
+        });
+
+        design.mockups = mockupResult.mockups || [];
+        design.status = 'ready';
+
+        // Update the design in the queue
+        const queueIdx = tshirtState.designQueue.findIndex(d => d.id === design.id);
+        if (queueIdx !== -1) {
+          tshirtState.designQueue[queueIdx] = design;
+        }
+
+        toast(`Design ${i + 1}/${total} complete!`);
+
+      } catch (error) {
+        console.error('Design generation failed:', error);
+        design.status = 'error';
+        design.error = error.message;
+        toast(`Design ${i + 1} failed: ${error.message}`);
       }
 
-      toast('Batch rendering complete!');
+      refreshTShirtUI();
     }
-  }, 400);
+
+    updateProgress(100, 'Batch complete!');
+    toast('All designs rendered!');
+
+    setTimeout(() => stopBatch(), 1500);
+
+  } catch (error) {
+    console.error('Batch rendering error:', error);
+    toast('Batch rendering failed: ' + error.message);
+    stopBatch();
+  }
 }
 
 function stopBatch() {
@@ -1898,6 +2029,100 @@ function stopBatch() {
     batchBtn.textContent = '▶️ Start Batch';
     batchBtn.style.background = 'var(--accent)';
   }
+}
+
+// Accept/Reject workflow
+function acceptDesign(designId) {
+  const design = tshirtState.designQueue.find(d => d.id === designId);
+  if (!design) return;
+
+  design.accepted = true;
+  design.rejected = false;
+  toast(`✅ Accepted: ${design.title}`);
+  refreshTShirtUI();
+}
+
+function rejectDesign(designId) {
+  const design = tshirtState.designQueue.find(d => d.id === designId);
+  if (!design) return;
+
+  design.rejected = true;
+  design.accepted = false;
+  design.status = 'rejected';
+  toast(`❌ Rejected: ${design.title}`);
+
+  // Auto-select next queued design
+  const nextQueued = tshirtState.designQueue.find(d => d.status === 'queued');
+  if (nextQueued) {
+    tshirtState.activeDesign = nextQueued.id;
+  }
+
+  refreshTShirtUI();
+}
+
+// Download functions
+async function downloadDesign(design) {
+  if (!design.designUrl) {
+    toast('No design image available');
+    return;
+  }
+
+  try {
+    const response = await fetch(design.designUrl);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${design.id}_design.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Design downloaded!');
+  } catch (error) {
+    console.error('Download error:', error);
+    toast('Download failed: ' + error.message);
+  }
+}
+
+async function downloadMockup(design) {
+  if (!design.mockups || design.mockups.length === 0) {
+    toast('No mockup available');
+    return;
+  }
+
+  try {
+    const mockup = design.mockups[0];
+    const response = await fetch(mockup.url);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${design.id}_mockup.jpg`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Mockup downloaded!');
+  } catch (error) {
+    console.error('Download error:', error);
+    toast('Download failed: ' + error.message);
+  }
+}
+
+// Batch export all accepted designs
+async function exportAllAccepted() {
+  const accepted = tshirtState.designQueue.filter(d => d.accepted && d.status === 'ready');
+
+  if (accepted.length === 0) {
+    toast('No accepted designs to export');
+    return;
+  }
+
+  toast(`Downloading ${accepted.length} accepted designs...`);
+
+  for (const design of accepted) {
+    await downloadDesign(design);
+    await new Promise(resolve => setTimeout(resolve, 500)); // Delay between downloads
+  }
+
+  toast('All accepted designs downloaded!');
 }
 </script>
 </body>
