@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>POD Creator - v1.0.11</title>
+<title>POD Creator - v1.0.12</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="color-scheme" content="dark light" />
 <meta name="description" content="Print-on-demand store creator for DevMode" />
@@ -73,7 +73,7 @@
 <body>
   <div class="topbar">
     <h1 style="margin-right:8px;">POD Creator</h1>
-    <span class="pill" style="background:#111;color:#fff;font-weight:600;" id="versionBadge">v1.0.11</span>
+    <span class="pill" style="background:#111;color:#fff;font-weight:600;" id="versionBadge">v1.0.12</span>
     <label class="inline">
       <span class="muted">App:</span>
       <select id="appSelect" class="select">
@@ -108,7 +108,7 @@ console.log('POD Creator JavaScript is loading...');
 /* =========================
    Configuration
    ========================= */
-const LOCAL_VERSION = '1.0.11';
+const LOCAL_VERSION = '1.0.12';
 console.log('POD Creator v' + LOCAL_VERSION + ' loaded successfully!');
 const UPDATE_URL = 'https://raw.githubusercontent.com/dquillman/POD-Store-Creator/main/frontend/updates.json';
 // Backend API URL - will be auto-detected from Cloud Run or can be set manually
@@ -390,7 +390,7 @@ function renderGrid(container){
   
   const wrap=el('div');
   const table=el('table',{class:'grid'});
-  const head=el('tr',{},['File','Transparency','Background Detected','4500×5400','Style A Heuristic','Actions'].map(h=>el('th',{},h)));
+  const head=el('tr',{},['File','Transparency','Background Detected','Dimensions','Style A Heuristic','Actions'].map(h=>el('th',{},h)));
   table.appendChild(el('thead',{},head));
   const body=el('tbody');
   checks.forEach((r,idx)=>{
@@ -399,13 +399,14 @@ function renderGrid(container){
       el('td',{},r.name),
       el('td',{},el('span',{class:r.hasTransparency?'good':'bad'},r.hasTransparency?'Yes':'No')),
       el('td',{},el('span',{class:r.bgLikely?'bad':'good'},r.bgLikely?'Yes':'No')),
-      el('td',{},el('span',{class:r.sizeOk?'good':'bad'},r.sizeOk?'OK':'Mismatch')),
+      el('td',{},el('div',{},[`${r.width}×${r.height}`,el('br'),el('span',{class:r.sizeOk?'good':'bad'},r.sizeOk?'✓ OK':'✗ Need 4500×5400')])),
       el('td',{},el('span',{class:r.styleAOk?'good':'bad'},r.styleAOk?'OK':'Check')),
       el('td',{},[
         el('button',{class:'btn',onclick:()=>{preview(idx)}},'Preview'),
         el('button',{class:'btn',onclick:()=>removeBG(idx,'white')},'Remove BG (white)'),
         el('button',{class:'btn',onclick:()=>removeBG(idx,'black')},'Remove BG (black)'),
-        el('button',{class:'btn',onclick:()=>exportPNG(idx)},'Export Clean')
+        el('button',{class:'btn',onclick:()=>exportPNG(idx)},'Export Clean'),
+        el('button',{class:'btn',onclick:()=>resizeImage(idx)},'Resize to 4500×5400'),
       ])
     ]);
     body.appendChild(tr);
@@ -449,7 +450,7 @@ async function analyze(img){
     }
   }
   const styleAOk = hasTransparency && !bgLikely && whitePix>100;
-  return { hasTransparency, bgLikely, sizeOk, styleAOk };
+  return { hasTransparency, bgLikely, sizeOk, styleAOk, width: w, height: h };
 }
 
 function preview(idx){
@@ -512,6 +513,36 @@ function exportPNG(idx){
   const a=document.createElement('a'); a.download=row.name.replace(/\.png$/i,'_clean.png'); a.href=c.toDataURL('image/png'); a.click();
 }
 
+
+async function resizeImage(idx){
+  const row=checks[idx];
+  const img=row._img;
+  const c=document.createElement('canvas');
+  c.width=4500;
+  c.height=5400;
+  const ctx=c.getContext('2d');
+  
+  // Calculate scaling to fit image within 4500x5400 while maintaining aspect ratio
+  const scale=Math.min(4500/img.naturalWidth, 5400/img.naturalHeight);
+  const scaledW=Math.round(img.naturalWidth*scale);
+  const scaledH=Math.round(img.naturalHeight*scale);
+  const offsetX=Math.round((4500-scaledW)/2);
+  const offsetY=Math.round((5400-scaledH)/2);
+  
+  // Draw image centered on canvas
+  ctx.drawImage(img, offsetX, offsetY, scaledW, scaledH);
+  
+  // Convert to blob and trigger download
+  c.toBlob(blob=>{
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.download=row.name.replace(/\.png$/i,'_4500x5400.png');
+    a.href=url;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast(`Resized ${row.name} to 4500×5400`);
+  }, 'image/png');
+}
 /* =========================
    Store Setup (checklist)
    ========================= */
