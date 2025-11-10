@@ -38,7 +38,11 @@
       "Bash(dir:*)",
       "Bash(node bump_version.mjs:*)",
       "Bash(chmod:*)",
-      "Bash(gsutil setmeta:*)"
+      "Bash(gsutil setmeta:*)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:storage.googleapis.com)",
+      "Bash(timeout 2 lsof:*)",
+      "Bash(node -c:*)"
     ],
     "deny": [],
     "ask": []

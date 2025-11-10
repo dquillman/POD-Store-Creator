@@ -2,246 +2,78 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>POD Creator - v1.0.13</title>
+<title>POD Creator - v1.0.11</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="color-scheme" content="dark light" />
 <meta name="description" content="Print-on-demand store creator for DevMode" />
 <style>
-  /* Dark mode (default) - CYBER HIGH-TECH */
+  /* Dark mode (default) */
   :root {
-    --fg:#e0e0ff;
-    --muted:#8888aa;
-    --accent:#00d9ff;
-    --accent-glow:rgba(0,217,255,0.3);
-    --border:#2a2a44;
-    --ok:#00ff88;
-    --bad:#ff4466;
-    --bg:#0a0a14;
-    --panel-bg:linear-gradient(135deg, #111122 0%, #1a1a2e 100%);
-    --input-bg:#16162a;
-    --btn-bg:linear-gradient(135deg, #1a1a2e 0%, #252544 100%);
-    --btn-active:linear-gradient(135deg, #00d9ff 0%, #0099ff 100%);
-    --grid-header:#16162e;
+    --fg:#e8e8e8;
+    --muted:#999;
+    --accent:#4a90e2;
+    --border:#333;
+    --ok:#4ade80;
+    --bad:#f87171;
+    --bg:#0f0f0f;
+    --panel-bg:#1a1a1a;
+    --input-bg:#222;
+    --btn-bg:#2a2a2a;
   }
 
   /* Light mode */
   body[data-theme="light"] {
     --fg:#111;
     --muted:#777;
-    --accent:#0066cc;
-    --accent-glow:rgba(0,102,204,0.2);
-    --border:#d7d7e7;
+    --accent:#111;
+    --border:#e7e7e7;
     --ok:#0a7a2f;
     --bad:#b40000;
-    --bg:#f5f5fa;
-    --panel-bg:linear-gradient(135deg, #fff 0%, #f8f8fc 100%);
+    --bg:#fafafa;
+    --panel-bg:#fff;
     --input-bg:#fff;
-    --btn-bg:linear-gradient(135deg, #fff 0%, #f5f5f9 100%);
-    --btn-active:linear-gradient(135deg, #0066cc 0%, #0099ff 100%);
-    --grid-header:#e8e8f0;
+    --btn-bg:#fff;
   }
 
   * { box-sizing: border-box; }
-  body { 
-    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace, system-ui; 
-    margin: 24px; 
-    color: var(--fg); 
-    background: var(--bg);
-    transition: background 0.3s, color 0.3s;
-  }
-  h1 { font-size: 24px; margin: 0 0 12px; letter-spacing: 2px; text-transform: uppercase; }
-  h2 { font-size: 16px; margin: 0 0 8px; letter-spacing: 1px; }
+  body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 24px; color: var(--fg); background: var(--bg); transition: background 0.2s, color 0.2s; }
+  h1 { font-size: 22px; margin: 0 0 12px; }
+  h2 { font-size: 16px; margin: 0 0 8px; }
   .topbar { display:flex; gap:12px; align-items:center; margin-bottom: 16px; flex-wrap: wrap; }
   .inline { display:inline-flex; align-items:center; gap:8px; }
   select, input, textarea { font: inherit; color: var(--fg); }
-  .select, .input, .textarea { 
-    padding: 8px 12px; 
-    border:2px solid var(--border); 
-    border-radius:8px; 
-    background:var(--input-bg);
-    transition: all 0.2s;
-  }
-  .select:focus, .input:focus, .textarea:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 12px var(--accent-glow);
-    outline: none;
-  }
+  .select, .input, .textarea { padding: 6px 10px; border:1px solid var(--border); border-radius:8px; background:var(--input-bg); }
   .tabs { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
-  .tab { 
-    padding:10px 16px; 
-    border:2px solid var(--border); 
-    border-radius:8px; 
-    cursor:pointer; 
-    background:var(--btn-bg);
-    transition: all 0.2s;
-    font-weight: 600;
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    font-size: 12px;
-  }
-  .tab:hover {
-    border-color: var(--accent);
-    box-shadow: 0 0 12px var(--accent-glow);
-  }
-  .tab.active { 
-    background:var(--btn-active); 
-    color:#fff; 
-    border-color:var(--accent);
-    box-shadow: 0 0 16px var(--accent-glow);
-  }
+  .tab { padding:8px 12px; border:1px solid var(--border); border-radius:8px; cursor:pointer; background:var(--btn-bg); }
+  .tab.active { background:var(--accent); color:#fff; border-color:var(--accent); }
   .grid { width: 100%; border-collapse: collapse; }
-  .grid th { 
-    background: var(--grid-header);
-    border-bottom: 2px solid var(--accent); 
-    padding: 12px 8px; 
-    font-size: 12px; 
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-  .grid td { 
-    border-bottom: 1px solid var(--border); 
-    padding: 12px 8px; 
-    font-size: 13px; 
-    vertical-align: top;
-  }
-  .grid tr { background: var(--panel-bg); }
-  .grid tr:hover { 
-    background: var(--panel-bg);
-    box-shadow: inset 0 0 20px var(--accent-glow);
-  }
-  .panel { 
-    border:2px solid var(--border); 
-    border-radius:12px; 
-    padding:20px; 
-    margin-bottom:16px; 
-    background:var(--panel-bg);
-    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-  }
-  .row { display:grid; grid-template-columns:1fr 400px; gap:16px; }
-  .btn { 
-    padding:10px 16px; 
-    border:2px solid var(--border); 
-    border-radius:8px; 
-    cursor:pointer; 
-    background:var(--btn-bg); 
-    color:var(--fg);
-    transition: all 0.2s;
-    font-weight: 600;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  .btn:hover { 
-    background:var(--btn-active); 
-    color:#fff; 
-    border-color:var(--accent);
-    box-shadow: 0 0 16px var(--accent-glow), inset 0 0 16px rgba(255,255,255,0.1);
-    transform: translateY(-1px);
-  }
-  .btn:active, .btn.active {
-    background:var(--btn-active);
-    color:#fff;
-    border-color:var(--accent);
-    box-shadow: 0 0 20px var(--accent-glow), inset 0 0 20px rgba(255,255,255,0.2);
-    transform: translateY(0);
-  }
+  .grid th, .grid td { border-bottom: 1px solid var(--border); padding: 8px; font-size: 14px; vertical-align: top; background:var(--panel-bg); }
+  .panel { border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:16px; background:var(--panel-bg); }
+  .row { display:grid; grid-template-columns:1fr 360px; gap:16px; }
+  .btn { padding:8px 12px; border:1px solid var(--border); border-radius:8px; cursor:pointer; background:var(--btn-bg); color:var(--fg); }
+  .btn:hover { background:var(--accent); color:#fff; border-color:var(--accent); }
   .btn + .btn { margin-left:8px; }
-  .good { color:var(--ok); font-weight:700; text-shadow: 0 0 8px var(--ok); }
-  .bad { color:var(--bad); font-weight:700; text-shadow: 0 0 8px var(--bad); }
+  .good { color:var(--ok); font-weight:600; }
+  .bad { color:var(--bad); font-weight:600; }
   .muted { color:var(--muted); }
-  .kbd { 
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; 
-    font-size: 12px; 
-    background:var(--input-bg); 
-    padding:3px 8px; 
-    border-radius:6px; 
-    border:2px solid var(--border);
-  }
-  canvas { 
-    background-image: linear-gradient(45deg,#1a1a2e 25%,transparent 25%),linear-gradient(-45deg,#1a1a2e 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#1a1a2e 75%),linear-gradient(-45deg,transparent 75%,#1a1a2e 75%);
-    background-size:20px 20px; 
-    background-position:0 0,0 10px,10px -10px,-10px 0px; 
-    border-radius: 8px;
-    border: 2px solid var(--border);
-    box-shadow: 0 0 16px var(--accent-glow);
-  }
-  body[data-theme="light"] canvas { 
-    background-image: linear-gradient(45deg,#e8e8f0 25%,transparent 25%),linear-gradient(-45deg,#e8e8f0 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#e8e8f0 75%),linear-gradient(-45deg,transparent 75%,#e8e8f0 75%); 
-  }
-  .toast { 
-    position: fixed; 
-    right:16px; 
-    bottom:16px; 
-    background:var(--accent); 
-    color:#fff; 
-    padding:12px 18px; 
-    border-radius:8px; 
-    display:none; 
-    box-shadow:0 8px 30px var(--accent-glow), 0 0 20px var(--accent-glow);
-    font-weight: 600;
-    border: 2px solid var(--accent);
-  }
+  .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; background:var(--btn-bg); padding:2px 6px; border-radius:6px; border:1px solid var(--border); }
+  canvas { background-image: linear-gradient(45deg,#333 25%,transparent 25%),linear-gradient(-45deg,#333 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#333 75%),linear-gradient(-45deg,transparent 75%,#333 75%);
+           background-size:20px 20px; background-position:0 0,0 10px,10px -10px,-10px 0px; border-radius: 8px; }
+  body[data-theme="light"] canvas { background-image: linear-gradient(45deg,#eee 25%,transparent 25%),linear-gradient(-45deg,#eee 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#eee 75%),linear-gradient(-45deg,transparent 75%,#eee 75%); }
+  .toast { position: fixed; right:16px; bottom:16px; background:#fff; color:#111; padding:10px 14px; border-radius:8px; display:none; box-shadow:0 8px 30px rgba(0,0,0,.5); }
+  body[data-theme="light"] .toast { background:#111; color:#fff; }
   .help { font-size: 13px; color: var(--muted); }
   .split { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-  .pill { 
-    font-size:11px; 
-    padding:6px 12px; 
-    border:2px solid var(--border); 
-    border-radius:999px; 
-    background:var(--btn-bg); 
-    display:inline-block;
-    font-weight: 600;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-  }
-  .theme-toggle { 
-    cursor:pointer; 
-    padding:8px; 
-    border-radius:8px; 
-    border:2px solid var(--border); 
-    background:var(--btn-bg);
-    transition: all 0.2s;
-  }
-  .theme-toggle:hover { 
-    background:var(--accent); 
-    border-color:var(--accent);
-    box-shadow: 0 0 12px var(--accent-glow);
-  }
+  .pill { font-size:12px; padding:4px 8px; border:1px solid var(--border); border-radius:999px; background:var(--btn-bg); display:inline-block; }
+  .theme-toggle { cursor:pointer; padding:8px; border-radius:8px; border:1px solid var(--border); background:var(--btn-bg); }
+  .theme-toggle:hover { background:var(--accent); border-color:var(--accent); }
   .footer { margin-top:24px; font-size:12px; color:var(--muted); }
-  
-  /* Preview dimension display */
-  .preview-info {
-    margin-top: 12px;
-    padding: 12px;
-    background: var(--panel-bg);
-    border: 2px solid var(--border);
-    border-radius: 8px;
-    font-size: 13px;
-    font-family: 'JetBrains Mono', monospace;
-    display: none;
-  }
-  .preview-info.active {
-    display: block;
-  }
-  .preview-info .dim-label {
-    color: var(--accent);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-size: 11px;
-  }
-  .preview-info .dim-value {
-    color: var(--fg);
-    font-weight: 600;
-    font-size: 16px;
-  }
 </style>
 </head>
 <body>
   <div class="topbar">
     <h1 style="margin-right:8px;">POD Creator</h1>
-    <span class="pill" style="background:#111;color:#fff;font-weight:600;" id="versionBadge">v1.0.13</span>
+    <span class="pill" style="background:#111;color:#fff;font-weight:600;" id="versionBadge">v1.0.11</span>
     <label class="inline">
       <span class="muted">App:</span>
       <select id="appSelect" class="select">
@@ -276,7 +108,7 @@ console.log('POD Creator JavaScript is loading...');
 /* =========================
    Configuration
    ========================= */
-const LOCAL_VERSION = '1.0.13';
+const LOCAL_VERSION = '1.0.11';
 console.log('POD Creator v' + LOCAL_VERSION + ' loaded successfully!');
 const UPDATE_URL = 'https://raw.githubusercontent.com/dquillman/POD-Store-Creator/main/frontend/updates.json';
 // Backend API URL - will be auto-detected from Cloud Run or can be set manually
@@ -548,7 +380,6 @@ function renderAuditTab(){
   const right = el('div',{class:'panel'},[
     el('h2',{},'Preview'),
     el('canvas',{id:'previewCanvas',width:600,height:720}),
-    el('div',{id:'previewInfo',class:'preview-info'},''),
     el('div',{class:'help',style:'margin-top:8px;'},
       'Style A: DevMode 105px · Slogan 400px · #FFFFFF · transparent · left-aligned · no extra effects.')
   ]);
@@ -568,13 +399,13 @@ function renderGrid(container){
       el('td',{},r.name),
       el('td',{},el('span',{class:r.hasTransparency?'good':'bad'},r.hasTransparency?'Yes':'No')),
       el('td',{},el('span',{class:r.bgLikely?'bad':'good'},r.bgLikely?'Yes':'No')),
-      el('td',{},el('div',{},[`${r.width}×${r.height}`,el('br'),el('span',{class:r.sizeOk?'good':'bad'},r.sizeOk?'✓ OK':'✗ Need 4500×5400')])),
+      el('td',{},el('div',{},[,el('br'),el('span',{class:r.sizeOk?'good':'bad'},r.sizeOk?'✓ OK':'✗ Need 4500×5400')])),
       el('td',{},el('span',{class:r.styleAOk?'good':'bad'},r.styleAOk?'OK':'Check')),
       el('td',{},[
         el('button',{class:'btn',onclick:()=>{preview(idx)}},'Preview'),
         el('button',{class:'btn',onclick:()=>removeBG(idx,'white')},'Remove BG (white)'),
         el('button',{class:'btn',onclick:()=>removeBG(idx,'black')},'Remove BG (black)'),
-        el('button',{class:'btn',onclick:()=>exportPNG(idx)},'Export Clean'),
+        el('button',{class:'btn',onclick:()=>exportPNG(idx)},'Export Clean')
         el('button',{class:'btn',onclick:()=>resizeImage(idx)},'Resize to 4500×5400'),
       ])
     ]);
@@ -621,7 +452,6 @@ async function analyze(img){
   const styleAOk = hasTransparency && !bgLikely && whitePix>100;
   return { hasTransparency, bgLikely, sizeOk, styleAOk, width: w, height: h };
 }
-let activePreviewIdx = -1;
 
 function preview(idx){
   try {
@@ -635,12 +465,6 @@ function preview(idx){
       toast('Error: Preview canvas not found');
       return;
     }
-    
-    // Update active button state
-    activePreviewIdx = idx;
-    document.querySelectorAll('.grid .btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
-    
     const ctx=cvs.getContext('2d');
     ctx.clearRect(0,0,cvs.width,cvs.height);
 
@@ -658,31 +482,6 @@ function preview(idx){
     const x = Math.round((cvs.width - w) / 2);
     const y = Math.round((cvs.height - h) / 2);
     ctx.drawImage(row._img, x, y, w, h);
-
-    // Update preview info with dimensions
-    const previewInfo = document.getElementById('previewInfo');
-    if (previewInfo) {
-      const origDim = `${row.width}×${row.height}`;
-      const targetDim = '4500×5400';
-      const sizeMatch = row.sizeOk ? 'MATCH' : 'NEED RESIZE';
-      previewInfo.innerHTML = `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-          <div>
-            <div class="dim-label">ORIGINAL</div>
-            <div class="dim-value">${origDim}</div>
-          </div>
-          <div>
-            <div class="dim-label">TARGET</div>
-            <div class="dim-value">${targetDim}</div>
-          </div>
-        </div>
-        <div style="margin-top:12px;padding-top:12px;border-top:2px solid var(--border);">
-          <div class="dim-label">STATUS</div>
-          <div class="dim-value" style="color:${row.sizeOk ? 'var(--ok)' : 'var(--bad)'};">${sizeMatch}</div>
-        </div>
-      `;
-      previewInfo.classList.add('active');
-    }
 
     toast(`Previewing: ${row.name}`);
   } catch (e) {
@@ -714,36 +513,6 @@ function exportPNG(idx){
   const a=document.createElement('a'); a.download=row.name.replace(/\.png$/i,'_clean.png'); a.href=c.toDataURL('image/png'); a.click();
 }
 
-
-async function resizeImage(idx){
-  const row=checks[idx];
-  const img=row._img;
-  const c=document.createElement('canvas');
-  c.width=4500;
-  c.height=5400;
-  const ctx=c.getContext('2d');
-  
-  // Calculate scaling to fit image within 4500x5400 while maintaining aspect ratio
-  const scale=Math.min(4500/img.naturalWidth, 5400/img.naturalHeight);
-  const scaledW=Math.round(img.naturalWidth*scale);
-  const scaledH=Math.round(img.naturalHeight*scale);
-  const offsetX=Math.round((4500-scaledW)/2);
-  const offsetY=Math.round((5400-scaledH)/2);
-  
-  // Draw image centered on canvas
-  ctx.drawImage(img, offsetX, offsetY, scaledW, scaledH);
-  
-  // Convert to blob and trigger download
-  c.toBlob(blob=>{
-    const url=URL.createObjectURL(blob);
-    const a=document.createElement('a');
-    a.download=row.name.replace(/\.png$/i,'_4500x5400.png');
-    a.href=url;
-    a.click();
-    URL.revokeObjectURL(url);
-    toast(`Resized ${row.name} to 4500×5400`);
-  }, 'image/png');
-}
 /* =========================
    Store Setup (checklist)
    ========================= */
