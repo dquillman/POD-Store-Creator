@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>POD Creator - v1.0.9</title>
+<title>POD Creator - v1.0.10</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="color-scheme" content="dark light" />
 <meta name="description" content="Print-on-demand store creator for DevMode" />
@@ -73,7 +73,7 @@
 <body>
   <div class="topbar">
     <h1 style="margin-right:8px;">POD Creator</h1>
-    <span class="pill" style="background:#111;color:#fff;font-weight:600;" id="versionBadge">v1.0.9</span>
+    <span class="pill" style="background:#111;color:#fff;font-weight:600;" id="versionBadge">v1.0.10</span>
     <label class="inline">
       <span class="muted">App:</span>
       <select id="appSelect" class="select">
@@ -108,7 +108,7 @@ console.log('POD Creator JavaScript is loading...');
 /* =========================
    Configuration
    ========================= */
-const LOCAL_VERSION = '1.0.9';
+const LOCAL_VERSION = '1.0.10';
 console.log('POD Creator v' + LOCAL_VERSION + ' loaded successfully!');
 const UPDATE_URL = 'https://raw.githubusercontent.com/dquillman/POD-Store-Creator/main/frontend/updates.json';
 // Backend API URL - will be auto-detected from Cloud Run or can be set manually
@@ -309,7 +309,7 @@ let spec = SPEC_DEVMODE;
    UI helpers
    ========================= */
 function el(tag, attrs={}, children=[]){ const e=document.createElement(tag);
-  Object.entries(attrs).forEach(([k,v])=>{ if(k==='class') e.className=v; else if(k==='html') e.innerHTML=v; else e.setAttribute(k,v);});
+  Object.entries(attrs).forEach(([k,v])=>{ if(k==='class') e.className=v; else if(k==='html') e.innerHTML=v; else if(k.startsWith('on')) e[k]=v; else e.setAttribute(k,v);});
   (Array.isArray(children)?children:[children]).filter(Boolean).forEach(c=>e.appendChild(typeof c==='string'?document.createTextNode(c):c));
   return e;
 }
