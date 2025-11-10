@@ -56,6 +56,33 @@ app.get("/health", (_req, res) => res.json({
   }
 }));
 
+// Run check-status script
+app.post("/api/run-check-status", async (_req, res) => {
+  try {
+    const { exec } = await import('child_process');
+    const { promisify } = await import('util');
+    const execAsync = promisify(exec);
+
+    // Run the check-status script in the parent directory
+    const { stdout, stderr } = await execAsync('npm run check-status', {
+      cwd: process.cwd() + '/..',
+      timeout: 30000 // 30 second timeout
+    });
+
+    res.json({
+      ok: true,
+      message: 'Status check completed',
+      output: stdout
+    });
+  } catch (error) {
+    console.error('Check status error:', error);
+    res.json({
+      ok: false,
+      error: error.message
+    });
+  }
+});
+
 // ---- Helper Functions ----
 
 // Shopify GraphQL helper

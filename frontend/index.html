@@ -280,7 +280,7 @@
 /* =========================
    VERSION - CHANGE ONLY HERE!
    ========================= */
-const VERSION = '1.0.17';
+const VERSION = '1.0.18';
 
 /* =========================
    Configuration
@@ -983,7 +983,41 @@ async function renderStoreTab(){
   });
 
   // Action buttons
-  const actions = el('div', {style:'margin-top:16px;display:flex;gap:8px;'}, [
+  const actions = el('div', {style:'margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;'}, [
+    el('button', {
+      class: 'btn',
+      style: 'background:var(--ok);color:#fff;',
+      onclick: async () => {
+        toast('Running status check...');
+        const btn = event.target;
+        btn.disabled = true;
+        btn.textContent = '⏳ Running npm run check-status...';
+
+        try {
+          // Call backend to run the npm script
+          const result = await fetch(`${API_URL}/api/run-check-status`, {
+            method: 'POST'
+          });
+          const data = await result.json();
+
+          if (data.ok) {
+            toast('✅ Status check complete!');
+            // Reload the store status
+            await loadStoreStatus();
+            const newContent = await renderStoreTab();
+            document.getElementById('content').innerHTML = '';
+            document.getElementById('content').appendChild(newContent);
+          } else {
+            toast('❌ Check failed: ' + data.error);
+          }
+        } catch (error) {
+          toast('❌ Error: ' + error.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = '▶️ Run Check Status';
+        }
+      }
+    }, '▶️ Run Check Status'),
     el('button', {
       class: 'btn',
       style: 'background:var(--accent);color:#fff;',
