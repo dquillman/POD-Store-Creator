@@ -280,7 +280,7 @@
 /* =========================
    VERSION - CHANGE ONLY HERE!
    ========================= */
-const VERSION = '1.0.21';
+const VERSION = '1.1.0';
 
 /* =========================
    Configuration
@@ -481,7 +481,8 @@ const SPEC_POD = {
   appId:"wescale-pod-console", title:"WeScale POD Console",
   tabs:[
     {id:"asset-audit",label:"Asset Audit"},
-    {id:"tshirt-designer",label:"T-Shirt Designer"},
+    {id:"ai-design-generator",label:"AI Design Generator"},
+    {id:"mockup-studio",label:"Product Mockup Studio"},
     {id:"niche",label:"Step 1 · Niche Research"},
     {id:"selector",label:"Mini-Audit"},
     {id:"brand",label:"Step 2–4 · Brand & Logo"},
@@ -541,9 +542,10 @@ async function switchTab(idx){
     if(tab.id==='store-setup') content.appendChild(await renderStoreTab());
     if(tab.id==='settings') content.appendChild(renderSettingsTab());
   }else if(spec.appId==='wescale-pod-console'){
-    // Asset Audit and T-Shirt Designer are available in POD Console
+    // Asset Audit, AI Design Generator, and Mockup Studio are available in POD Console
     if(tab.id==='asset-audit') content.appendChild(renderAuditTab());
-    else if(tab.id==='tshirt-designer') content.appendChild(renderTShirtDesigner());
+    else if(tab.id==='ai-design-generator') content.appendChild(renderAIDesignGenerator());
+    else if(tab.id==='mockup-studio') content.appendChild(renderMockupStudio());
     else content.appendChild(renderPODScaffold());
   }
 }
@@ -1476,7 +1478,399 @@ async function uploadStoreStatus(file){
 }
 
 /* =========================
-   T-Shirt Designer
+   AI Design Generator
+   ========================= */
+
+let aiDesignState = {
+  generatedImages: [] // {id, prompt, imageUrl, timestamp, downloaded}
+};
+
+function renderAIDesignGenerator() {
+  const container = el('div', { style: 'display:flex;flex-direction:column;gap:16px;' });
+
+  // Input Panel
+  const inputPanel = el('div', { class: 'panel' }, [
+    el('h2', {}, 'AI Design Generator'),
+    el('p', { class: 'help' }, 'Generate artwork using DALL-E 3. Perfect for creating t-shirt designs, logos, and graphics.'),
+
+    el('label', { style: 'display:block;margin-top:16px;font-weight:600;' }, 'Prompt'),
+    el('textarea', {
+      id: 'ai-prompt',
+      class: 'input',
+      placeholder: 'Example: DevMode logo with bold white typography, minimalist design, high contrast, suitable for t-shirt printing',
+      style: 'width:100%;min-height:100px;margin-top:8px;'
+    }),
+
+    el('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;' }, [
+      el('div', {}, [
+        el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'Image Size'),
+        el('select', {
+          id: 'ai-size',
+          class: 'select',
+          style: 'width:100%;'
+        }, [
+          el('option', { value: '1024x1024' }, '1024x1024 (Square)'),
+          el('option', { value: '1024x1792' }, '1024x1792 (Portrait)'),
+          el('option', { value: '1792x1024' }, '1792x1024 (Landscape)')
+        ])
+      ]),
+      el('div', {}, [
+        el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'Style'),
+        el('select', {
+          id: 'ai-style',
+          class: 'select',
+          style: 'width:100%;'
+        }, [
+          el('option', { value: 'natural' }, 'Natural'),
+          el('option', { value: 'vivid' }, 'Vivid')
+        ])
+      ])
+    ]),
+
+    el('button', {
+      id: 'ai-generate-btn',
+      class: 'btn',
+      style: 'margin-top:16px;background:var(--ok);color:#fff;padding:12px 24px;font-weight:600;width:100%;',
+      onclick: generateAIDesign
+    }, '✨ Generate Design')
+  ]);
+
+  // Gallery Panel
+  const galleryPanel = el('div', { class: 'panel' }, [
+    el('h2', {}, 'Generated Designs'),
+    el('div', { id: 'ai-gallery', style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px;margin-top:16px;' })
+  ]);
+
+  container.appendChild(inputPanel);
+  container.appendChild(galleryPanel);
+
+  // Render existing images
+  setTimeout(() => renderAIGallery(), 0);
+
+  return container;
+}
+
+function renderAIGallery() {
+  const gallery = document.getElementById('ai-gallery');
+  if (!gallery) return;
+
+  gallery.innerHTML = '';
+
+  if (aiDesignState.generatedImages.length === 0) {
+    gallery.appendChild(el('div', { class: 'help', style: 'grid-column:1/-1;text-align:center;padding:40px;' },
+      'No designs generated yet. Enter a prompt above and click Generate Design.'));
+    return;
+  }
+
+  aiDesignState.generatedImages.forEach(img => {
+    const card = el('div', {
+      style: 'border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--panel-bg);'
+    }, [
+      el('img', {
+        src: img.imageUrl,
+        style: 'width:100%;aspect-ratio:1;object-fit:cover;',
+        alt: 'Generated design'
+      }),
+      el('div', { style: 'padding:12px;' }, [
+        el('p', { style: 'font-size:12px;color:var(--muted);margin-bottom:8px;' },
+          new Date(img.timestamp).toLocaleString()),
+        el('p', { style: 'font-size:13px;margin-bottom:12px;line-height:1.4;' },
+          img.prompt.substring(0, 100) + (img.prompt.length > 100 ? '...' : '')),
+        el('div', { style: 'display:flex;gap:8px;' }, [
+          el('button', {
+            class: 'btn',
+            style: 'flex:1;background:var(--accent);color:#fff;',
+            onclick: () => downloadAIDesign(img)
+          }, '📥 Download'),
+          el('button', {
+            class: 'btn',
+            onclick: () => deleteAIDesign(img.id)
+          }, '🗑️')
+        ])
+      ])
+    ]);
+    gallery.appendChild(card);
+  });
+}
+
+async function generateAIDesign() {
+  const promptEl = document.getElementById('ai-prompt');
+  const sizeEl = document.getElementById('ai-size');
+  const styleEl = document.getElementById('ai-style');
+  const btn = document.getElementById('ai-generate-btn');
+
+  const prompt = promptEl?.value.trim();
+  if (!prompt) {
+    toast('Please enter a prompt');
+    return;
+  }
+
+  const size = sizeEl?.value || '1024x1024';
+  const style = styleEl?.value || 'natural';
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating...';
+
+  try {
+    toast('Generating design with DALL-E...');
+
+    const result = await apiCall('/api/generate-design', {
+      method: 'POST',
+      body: JSON.stringify({
+        prompt: prompt,
+        size: size,
+        style: style
+      })
+    });
+
+    const newImage = {
+      id: Date.now().toString(),
+      prompt: result.revised_prompt || prompt,
+      imageUrl: result.imageUrl,
+      timestamp: Date.now(),
+      size: size,
+      downloaded: false
+    };
+
+    aiDesignState.generatedImages.unshift(newImage);
+    renderAIGallery();
+    toast('✅ Design generated!');
+
+  } catch (error) {
+    console.error('AI generation failed:', error);
+    toast('❌ Generation failed: ' + error.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ Generate Design';
+  }
+}
+
+async function downloadAIDesign(img) {
+  try {
+    const response = await fetch(img.imageUrl);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ai-design-${img.id}.png`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    img.downloaded = true;
+    toast('Design downloaded!');
+  } catch (error) {
+    console.error('Download error:', error);
+    toast('Download failed: ' + error.message);
+  }
+}
+
+function deleteAIDesign(id) {
+  aiDesignState.generatedImages = aiDesignState.generatedImages.filter(img => img.id !== id);
+  renderAIGallery();
+  toast('Design deleted');
+}
+
+/* =========================
+   Product Mockup Studio
+   ========================= */
+
+let mockupState = {
+  artworkFile: null,
+  artworkUrl: null,
+  generatedMockups: []
+};
+
+function renderMockupStudio() {
+  const container = el('div', { style: 'display:flex;flex-direction:column;gap:16px;' });
+
+  // Upload Panel
+  const uploadPanel = el('div', { class: 'panel' }, [
+    el('h2', {}, 'Product Mockup Studio'),
+    el('p', { class: 'help' }, 'Upload your artwork and generate photorealistic product mockups using Printful.'),
+
+    el('div', { style: 'margin-top:16px;' }, [
+      el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'Upload Artwork (PNG)'),
+      el('input', {
+        type: 'file',
+        id: 'mockup-file-input',
+        accept: 'image/png,image/jpeg',
+        class: 'input',
+        style: 'width:100%;',
+        onchange: handleMockupFileUpload
+      })
+    ]),
+
+    el('div', { id: 'mockup-preview', style: 'margin-top:16px;' })
+  ]);
+
+  // Options Panel
+  const optionsPanel = el('div', { class: 'panel' }, [
+    el('h2', {}, 'Mockup Options'),
+
+    el('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:16px;' }, [
+      el('div', {}, [
+        el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'Product Type'),
+        el('select', { id: 'mockup-product', class: 'select', style: 'width:100%;' }, [
+          el('option', { value: '71' }, 'Unisex T-Shirt'),
+          el('option', { value: '19' }, 'Hoodie'),
+          el('option', { value: '388' }, 'Tank Top')
+        ])
+      ]),
+      el('div', {}, [
+        el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'Color'),
+        el('select', { id: 'mockup-variant', class: 'select', style: 'width:100%;' }, [
+          el('option', { value: '4012' }, 'Black'),
+          el('option', { value: '4013' }, 'White'),
+          el('option', { value: '4014' }, 'Heather Gray'),
+          el('option', { value: '4016' }, 'Navy')
+        ])
+      ])
+    ]),
+
+    el('button', {
+      id: 'mockup-generate-btn',
+      class: 'btn',
+      style: 'margin-top:16px;background:var(--ok);color:#fff;padding:12px 24px;font-weight:600;width:100%;',
+      onclick: generateMockup
+    }, '📸 Generate Mockup')
+  ]);
+
+  // Mockup Gallery
+  const mockupGallery = el('div', { class: 'panel' }, [
+    el('h2', {}, 'Generated Mockups'),
+    el('div', { id: 'mockup-gallery', style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:16px;' })
+  ]);
+
+  container.appendChild(uploadPanel);
+  container.appendChild(optionsPanel);
+  container.appendChild(mockupGallery);
+
+  return container;
+}
+
+function handleMockupFileUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  mockupState.artworkFile = file;
+  mockupState.artworkUrl = URL.createObjectURL(file);
+
+  const preview = document.getElementById('mockup-preview');
+  if (preview) {
+    preview.innerHTML = '';
+    preview.appendChild(el('img', {
+      src: mockupState.artworkUrl,
+      style: 'max-width:300px;border:1px solid var(--border);border-radius:8px;',
+      alt: 'Artwork preview'
+    }));
+  }
+
+  toast('Artwork loaded!');
+}
+
+async function generateMockup() {
+  if (!mockupState.artworkUrl) {
+    toast('Please upload artwork first');
+    return;
+  }
+
+  const productId = document.getElementById('mockup-product')?.value || '71';
+  const variantId = document.getElementById('mockup-variant')?.value || '4012';
+  const btn = document.getElementById('mockup-generate-btn');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating mockup...';
+
+  try {
+    toast('Creating mockup with Printful...');
+
+    const result = await apiCall('/api/mockup', {
+      method: 'POST',
+      body: JSON.stringify({
+        imageUrl: mockupState.artworkUrl,
+        productId: parseInt(productId),
+        variantId: parseInt(variantId)
+      })
+    });
+
+    if (result.mockups && result.mockups.length > 0) {
+      mockupState.generatedMockups.push({
+        id: Date.now().toString(),
+        mockups: result.mockups,
+        timestamp: Date.now()
+      });
+
+      renderMockupGallery();
+      toast('✅ Mockup generated!');
+    } else {
+      toast('No mockups returned from Printful');
+    }
+
+  } catch (error) {
+    console.error('Mockup generation failed:', error);
+    toast('❌ Mockup failed: ' + error.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📸 Generate Mockup';
+  }
+}
+
+function renderMockupGallery() {
+  const gallery = document.getElementById('mockup-gallery');
+  if (!gallery) return;
+
+  gallery.innerHTML = '';
+
+  if (mockupState.generatedMockups.length === 0) {
+    gallery.appendChild(el('div', { class: 'help', style: 'grid-column:1/-1;text-align:center;padding:40px;' },
+      'No mockups generated yet. Upload artwork and click Generate Mockup.'));
+    return;
+  }
+
+  mockupState.generatedMockups.forEach(item => {
+    item.mockups.forEach(mockup => {
+      const card = el('div', {
+        style: 'border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--panel-bg);'
+      }, [
+        el('img', {
+          src: mockup.url,
+          style: 'width:100%;aspect-ratio:1;object-fit:cover;',
+          alt: 'Product mockup'
+        }),
+        el('div', { style: 'padding:12px;' }, [
+          el('p', { style: 'font-size:12px;color:var(--muted);margin-bottom:8px;' },
+            new Date(item.timestamp).toLocaleString()),
+          el('button', {
+            class: 'btn',
+            style: 'width:100%;background:var(--accent);color:#fff;',
+            onclick: () => downloadMockup(mockup.url, item.id)
+          }, '📥 Download Mockup')
+        ])
+      ]);
+      gallery.appendChild(card);
+    });
+  });
+}
+
+async function downloadMockup(url, id) {
+  try {
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const objUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objUrl;
+    a.download = `mockup-${id}.jpg`;
+    a.click();
+    URL.revokeObjectURL(objUrl);
+    toast('Mockup downloaded!');
+  } catch (error) {
+    console.error('Download error:', error);
+    toast('Download failed: ' + error.message);
+  }
+}
+
+/* =========================
+   T-Shirt Designer (OLD - DEPRECATED)
    ========================= */
 
 // T-Shirt Designer State
