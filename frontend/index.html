@@ -449,12 +449,40 @@ async function analyze(img){
 }
 
 function preview(idx){
-  const row=checks[idx];
-  const cvs=document.getElementById('previewCanvas'); const ctx=cvs.getContext('2d');
-  ctx.clearRect(0,0,cvs.width,cvs.height);
-  const ratio=Math.min(cvs.width/row._img.naturalWidth,cvs.height/row._img.naturalHeight);
-  const w=Math.round(row._img.naturalWidth*ratio), h=Math.round(row._img.naturalHeight*ratio);
-  ctx.drawImage(row._img,0,0,w,h);
+  try {
+    const row=checks[idx];
+    if (!row || !row._img) {
+      toast('Error: Image not loaded. Try running checks first.');
+      return;
+    }
+    const cvs=document.getElementById('previewCanvas');
+    if (!cvs) {
+      toast('Error: Preview canvas not found');
+      return;
+    }
+    const ctx=cvs.getContext('2d');
+    ctx.clearRect(0,0,cvs.width,cvs.height);
+
+    // Fill with checkerboard pattern to show transparency
+    const tileSize = 20;
+    for (let y = 0; y < cvs.height; y += tileSize) {
+      for (let x = 0; x < cvs.width; x += tileSize) {
+        ctx.fillStyle = ((x / tileSize) + (y / tileSize)) % 2 === 0 ? '#e0e0e0' : '#f5f5f5';
+        ctx.fillRect(x, y, tileSize, tileSize);
+      }
+    }
+
+    const ratio=Math.min(cvs.width/row._img.naturalWidth,cvs.height/row._img.naturalHeight);
+    const w=Math.round(row._img.naturalWidth*ratio), h=Math.round(row._img.naturalHeight*ratio);
+    const x = Math.round((cvs.width - w) / 2);
+    const y = Math.round((cvs.height - h) / 2);
+    ctx.drawImage(row._img, x, y, w, h);
+
+    toast(`Previewing: ${row.name}`);
+  } catch (e) {
+    console.error('Preview error:', e);
+    toast('Error previewing image: ' + e.message);
+  }
 }
 
 function removeBG(idx,mode='white'){
@@ -483,35 +511,167 @@ function exportPNG(idx){
 /* =========================
    Store Setup (checklist)
    ========================= */
-function renderStoreTab(){
+let storeStatus = null;
+
+async function loadStoreStatus() {
+  try {
+    const res = await fetch('../store_status_report.json');
+    if (res.ok) {
+      storeStatus = await res.json();
+      return storeStatus;
+    }
+  } catch (e) {
+    console.log('No store_status_report.json found. Run: npm run check-status');
+  }
+  return null;
+}
+
+function checkStepCompletion(stepId, status) {
+  if (!status) return false;
+
+  // Map each step to file/data validation
+  switch(stepId) {
+    case 0: // Lock DevMode Style A
+      return status.environment?.configured && status.assets?.artworks > 0;
+
+    case 1: // Generate & approve slogans
+      return status.assets?.artworks >= 40; // Artworks exist
+
+    case 2: // Batch export transparent PNGs
+      return status.assets?.artworks >= 40; // Check for sufficient artwork files
+
+    case 3: // Create PDP mockups
+      return status.assets?.mockups >= 5; // Check mockup files
+
+    case 4: // Create listings
+      return status.csvFiles?.shopifyProducts === true; // CSV generated
+
+    case 5: // SEO pass
+      return status.csvFiles?.shopifyProducts === true; // Included in CSV
+
+    case 6: // Pricing & profit check
+      return status.csvFiles?.shopifyProducts === true; // Pricing in CSV
+
+    case 7: // Publish to storefronts
+      return status.csvFiles?.printfulMapping === true; // Ready to publish
+
+    case 8: // Final QA
+      return false; // Manual QA always pending until manually checked
+
+    default:
+      return false;
+  }
+}
+
+async function renderStoreTab(){
+  const status = await loadStoreStatus();
+
   const steps = [
-    "Lock DevMode Style A (font sizes, spacing)",
-    "Generate & approve slogans",
-    "Batch export transparent PNGs 4500×5400",
-    "Create PDP mockups (dark tees + hoodies)",
-    "Create listings (title, bullets, tags)",
-    "SEO pass (keywords, alt text)",
-    "Pricing & profit check ($28–$35 tees)",
-    "Publish to storefronts",
-    "Final QA: thumbnail contrast, readability"
+    { label: "Lock DevMode Style A (font sizes, spacing)", hint: "Configure store settings and environment" },
+    { label: "Generate & approve slogans", hint: "Create artwork files in /artworks folder" },
+    { label: "Batch export transparent PNGs 4500×5400", hint: "Export high-res PNG files" },
+    { label: "Create PDP mockups (dark tees + hoodies)", hint: "Generate mockup images in /mockups folder" },
+    { label: "Create listings (title, bullets, tags)", hint: "Run: npm run gen-csv" },
+    { label: "SEO pass (keywords, alt text)", hint: "Review CSV file for SEO fields" },
+    { label: "Pricing & profit check ($28–$35 tees)", hint: "Verify pricing in CSV" },
+    { label: "Publish to storefronts", hint: "Run: npm run setup to publish" },
+    { label: "Final QA: thumbnail contrast, readability", hint: "Manual final review" }
   ];
+
   const key='pod-creator-store-flow';
   const saved = JSON.parse(localStorage.getItem(key)||'{}');
 
-  const list = el('div');
-  steps.forEach((txt,i)=>{
-    const id='s'+i, checked=!!saved[id];
-    const row = el('label',{style:'display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer;'},[
-      el('input',{type:'checkbox',checked:checked?'checked':null,onchange:(e)=>{ saved[id]=e.target.checked; localStorage.setItem(key,JSON.stringify(saved)); }}),
-      el('span',{},txt)
+  // Stats section
+  const statsDiv = el('div', {style:'display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;'});
+  if (status) {
+    const statCard = (label, value, color='var(--accent)') =>
+      el('div', {style:`padding:12px;border:1px solid var(--border);border-radius:8px;text-align:center;`}, [
+        el('div', {style:`font-size:24px;font-weight:700;color:${color};`}, String(value)),
+        el('div', {style:'font-size:12px;color:var(--muted);margin-top:4px;'}, label)
+      ]);
+
+    statsDiv.appendChild(statCard('Artworks', status.assets?.artworks || 0, '#3b82f6'));
+    statsDiv.appendChild(statCard('Mockups', status.assets?.mockups || 0, '#8b5cf6'));
+    statsDiv.appendChild(statCard('Brand Assets', status.assets?.brand || 0, '#ec4899'));
+  }
+
+  const list = el('div', {style:'margin-top:16px;'});
+  steps.forEach((step, i) => {
+    const id = 's' + i;
+    const manualCheck = !!saved[id];
+    const autoDetected = checkStepCompletion(i, status);
+    const isComplete = manualCheck || autoDetected;
+
+    const checkbox = el('input', {
+      type: 'checkbox',
+      checked: isComplete ? 'checked' : null,
+      onchange: (e) => {
+        saved[id] = e.target.checked;
+        localStorage.setItem(key, JSON.stringify(saved));
+        renderStoreTab().then(newContent => {
+          document.getElementById('content').innerHTML = '';
+          document.getElementById('content').appendChild(newContent);
+        });
+      }
+    });
+
+    const statusIndicator = autoDetected
+      ? el('span', {style:'color:#10b981;font-size:14px;margin-left:auto;'}, '✓ Auto-detected')
+      : manualCheck
+      ? el('span', {style:'color:#3b82f6;font-size:14px;margin-left:auto;'}, '✓ Manual')
+      : el('span', {style:'color:var(--muted);font-size:14px;margin-left:auto;'}, '○ Pending');
+
+    const row = el('div', {
+      style: `display:flex;align-items:flex-start;gap:12px;padding:12px;margin:8px 0;border:1px solid ${isComplete ? '#10b981' : 'var(--border)'};border-radius:8px;background:${isComplete ? 'rgba(16,185,129,0.05)' : 'transparent'};cursor:pointer;`
+    }, [
+      checkbox,
+      el('div', {style:'flex:1;'}, [
+        el('div', {style:'font-weight:600;margin-bottom:4px;'}, step.label),
+        el('div', {style:'font-size:12px;color:var(--muted);'}, step.hint)
+      ]),
+      statusIndicator
     ]);
+
+    row.onclick = (e) => {
+      if (e.target !== checkbox) checkbox.click();
+    };
+
     list.appendChild(row);
   });
 
-  return el('div',{class:'panel'},[
-    el('h2',{},'Finish Store Setup'),
+  // Action buttons
+  const actions = el('div', {style:'margin-top:16px;display:flex;gap:8px;'}, [
+    el('button', {
+      class: 'btn',
+      style: 'background:var(--accent);color:#fff;',
+      onclick: async () => {
+        toast('Refreshing store status...');
+        await loadStoreStatus();
+        const newContent = await renderStoreTab();
+        document.getElementById('content').innerHTML = '';
+        document.getElementById('content').appendChild(newContent);
+        toast('Store status refreshed!');
+      }
+    }, '🔄 Refresh Status'),
+    el('button', {
+      class: 'btn',
+      onclick: () => {
+        const completed = steps.filter((s, i) => checkStepCompletion(i, status) || saved['s'+i]).length;
+        const total = steps.length;
+        const pct = Math.round((completed / total) * 100);
+        toast(`Progress: ${completed}/${total} steps (${pct}%)`);
+      }
+    }, '📊 Show Progress')
+  ]);
+
+  return el('div', {class:'panel'}, [
+    el('h2', {}, 'Store Setup Flow'),
+    status ? statsDiv : el('div', {class:'help', style:'margin-bottom:16px;background:#fef3c7;color:#92400e;padding:12px;border-radius:8px;'},
+      'Run npm run check-status to auto-detect completion status'),
     list,
-    el('div',{class:'help',style:'margin-top:8px;'},'Progress is saved in your browser (localStorage).')
+    actions,
+    el('div', {class:'help', style:'margin-top:12px;'},
+      'Steps are auto-detected from your files. Manual checks are saved in browser localStorage.')
   ]);
 }
 
