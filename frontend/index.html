@@ -291,10 +291,11 @@ console.log('POD Creator v' + VERSION + ' loaded successfully!');
 
 // Update page title and badge with version
 document.title = `POD Creator - v${VERSION}`;
-document.addEventListener('DOMContentLoaded', () => {
+// Update badge immediately when script runs (after badge element exists in DOM)
+setTimeout(() => {
   const badge = document.getElementById('versionBadge');
   if (badge) badge.textContent = `v${VERSION}`;
-});
+}, 0);
 const UPDATE_URL = 'https://raw.githubusercontent.com/dquillman/POD-Store-Creator/main/frontend/updates.json';
 // Backend API URL - will be auto-detected from Cloud Run or can be set manually
 const API_URL = window.location.hostname === 'storage.googleapis.com'
@@ -1030,7 +1031,7 @@ function renderSettingsTab(){
     labeled('Slogan font size (px)', String(settings.fontSizeSlogan), v=>settings.fontSizeSlogan=Number(v)),
     labeled('Line height (em)', String(settings.lineHeight), v=>settings.lineHeight=Number(v)),
     labeled('BG detect tolerance (0-255)', String(settings.maxBgDelta), v=>settings.maxBgDelta=Number(v)),
-    el('div',{class:'help',style:'margin-top:6px;'},'Note: PNGs don't reliably store DPI; 4500×5400 px is interpreted as 300 DPI at print.')
+    el('div',{class:'help',style:'margin-top:6px;'},'Note: PNGs do not reliably store DPI; 4500x5400 px is interpreted as 300 DPI at print.')
   ]);
 
   // Style A Heuristic Panel

@@ -47,7 +47,8 @@
       "Bash(findstr:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(temp_check.js)"
     ],
     "deny": [],
     "ask": []
