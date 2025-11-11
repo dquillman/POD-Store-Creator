@@ -280,7 +280,7 @@
 /* =========================
    VERSION - CHANGE ONLY HERE!
    ========================= */
-const VERSION = '1.6.1';
+const VERSION = '1.6.2';
 
 /* =========================
    Configuration
@@ -2500,7 +2500,7 @@ function renderMockupStudio() {
       el('h3', { style: 'margin-bottom:12px;font-size:16px;' }, '👤 Model & Scene Customization'),
       el('p', { class: 'help', style: 'margin-bottom:12px;font-size:13px;' },
         '✨ All these options work! DALL-E will generate a custom mockup based on your preferences.'),
-        el('div', { style: 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;' }, [
+      el('div', { style: 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;' }, [
           el('div', {}, [
             el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;font-size:13px;' }, 'Model Gender'),
             el('select', { id: 'mockup-model-gender', class: 'select', style: 'width:100%;' }, [
