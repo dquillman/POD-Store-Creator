@@ -280,7 +280,7 @@
 /* =========================
    VERSION - CHANGE ONLY HERE!
    ========================= */
-const VERSION = '1.3.2';
+const VERSION = '1.4.0';
 
 /* =========================
    Configuration
@@ -1673,13 +1673,32 @@ function renderAIDesignGenerator() {
     el('h2', {}, 'AI Design Generator'),
     el('p', { class: 'help' }, 'Generate print-ready artwork for t-shirts. Design ONLY the graphic - mockups come later!'),
 
-    // Design Mode Toggle
+    // Generation Method Selector
     el('div', { style: 'margin:16px 0;padding:12px;background:var(--input-bg);border-radius:8px;border:1px solid var(--border);' }, [
+      el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'Generation Method'),
+      el('div', { style: 'display:flex;gap:12px;flex-wrap:wrap;' }, [
+        el('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer;' }, [
+          el('input', { type: 'radio', name: 'gen-method', value: 'text-only', checked: 'checked', onchange: () => toggleGenerationMethod('text-only') }),
+          el('span', {}, 'Text Only (No AI)')
+        ]),
+        el('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer;' }, [
+          el('input', { type: 'radio', name: 'gen-method', value: 'dalle', onchange: () => toggleGenerationMethod('dalle') }),
+          el('span', {}, 'DALL-E 3')
+        ]),
+        el('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer;' }, [
+          el('input', { type: 'radio', name: 'gen-method', value: 'imagen', onchange: () => toggleGenerationMethod('imagen') }),
+          el('span', {}, 'Google Imagen')
+        ])
+      ])
+    ]),
+
+    // Design Mode Toggle (for AI methods)
+    el('div', { id: 'ai-mode-section', style: 'margin:16px 0;padding:12px;background:var(--input-bg);border-radius:8px;border:1px solid var(--border);display:none;' }, [
       el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'Design Mode'),
       el('div', { style: 'display:flex;gap:12px;' }, [
         el('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer;' }, [
           el('input', { type: 'radio', name: 'ai-mode', value: 'simple', checked: 'checked', onchange: () => toggleAIMode('simple') }),
-          el('span', {}, 'Simple (Text Only)')
+          el('span', {}, 'Simple Controls')
         ]),
         el('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer;' }, [
           el('input', { type: 'radio', name: 'ai-mode', value: 'custom', onchange: () => toggleAIMode('custom') }),
@@ -1753,9 +1772,12 @@ function renderAIDesignGenerator() {
           class: 'select',
           style: 'width:100%;'
         }, [
-          el('option', { value: '1024x1024' }, '1024x1024 (Square)'),
-          el('option', { value: '1024x1792' }, '1024x1792 (Portrait)'),
-          el('option', { value: '1792x1024' }, '1792x1024 (Landscape)')
+          el('option', { value: '4500x4500', selected: 'selected' }, '4500x4500 @ 300 DPI (POD Standard)'),
+          el('option', { value: '4500x5400' }, '4500x5400 @ 300 DPI (Portrait)'),
+          el('option', { value: '5400x4500' }, '5400x4500 @ 300 DPI (Landscape)'),
+          el('option', { value: '1024x1024' }, '1024x1024 (Preview/Test)'),
+          el('option', { value: '1024x1792' }, '1024x1792 (Preview Portrait)'),
+          el('option', { value: '1792x1024' }, '1792x1024 (Preview Landscape)')
         ])
       ]),
       el('div', {}, [
@@ -1837,6 +1859,25 @@ function renderAIGallery() {
   });
 }
 
+function toggleGenerationMethod(method) {
+  const aiModeSection = document.getElementById('ai-mode-section');
+  const simpleMode = document.getElementById('ai-simple-mode');
+  const customMode = document.getElementById('ai-custom-mode');
+
+  if (method === 'text-only') {
+    // Text only mode - show simple controls, hide AI mode toggle
+    aiModeSection.style.display = 'none';
+    simpleMode.style.display = 'block';
+    customMode.style.display = 'none';
+  } else {
+    // AI methods (DALL-E or Imagen) - show AI mode toggle
+    aiModeSection.style.display = 'block';
+    // Check current AI mode
+    const currentMode = document.querySelector('input[name="ai-mode"]:checked')?.value || 'simple';
+    toggleAIMode(currentMode);
+  }
+}
+
 function toggleAIMode(mode) {
   const simpleMode = document.getElementById('ai-simple-mode');
   const customMode = document.getElementById('ai-custom-mode');
@@ -1855,7 +1896,10 @@ async function generateAIDesign() {
   const sizeEl = document.getElementById('ai-size');
   const styleEl = document.getElementById('ai-style');
 
-  // Check which mode is active
+  // Check which generation method is selected
+  const genMethod = document.querySelector('input[name="gen-method"]:checked')?.value || 'text-only';
+
+  // Check which mode is active (for AI methods)
   const mode = document.querySelector('input[name="ai-mode"]:checked')?.value || 'simple';
 
   let prompt = '';
@@ -1906,44 +1950,136 @@ async function generateAIDesign() {
     }
   }
 
-  const size = sizeEl?.value || '1024x1024';
+  const size = sizeEl?.value || '4500x4500';
   const style = styleEl?.value || 'vivid';
 
   btn.disabled = true;
   btn.textContent = '⏳ Generating...';
 
   try {
-    toast('Generating design with DALL-E...');
+    let imageUrl = '';
+    let generationMethod = genMethod;
 
-    const result = await apiCall('/api/generate-design', {
-      method: 'POST',
-      body: JSON.stringify({
-        prompt: prompt,
-        size: size,
-        style: style
-      })
-    });
+    if (genMethod === 'text-only') {
+      // Text Only mode - generate canvas-based text design
+      toast('Creating text design...');
+
+      const text = document.getElementById('ai-text')?.value.trim() || 'SAMPLE TEXT';
+      const textColor = document.getElementById('ai-text-color')?.value || 'white';
+      const background = document.getElementById('ai-background')?.value || 'transparent';
+
+      imageUrl = await generateTextOnlyDesign(text, textColor, background, size);
+      prompt = `Text: "${text}" | Color: ${textColor} | Background: ${background}`;
+
+    } else if (genMethod === 'dalle') {
+      // DALL-E 3 generation
+      toast('Generating design with DALL-E 3...');
+
+      const result = await apiCall('/api/generate-design', {
+        method: 'POST',
+        body: JSON.stringify({
+          prompt: prompt,
+          size: size.startsWith('4500') || size.startsWith('5400') ? '1024x1024' : size, // DALL-E max is 1792
+          style: style,
+          provider: 'dalle'
+        })
+      });
+
+      imageUrl = result.imageUrl;
+      prompt = result.revised_prompt || prompt;
+
+    } else if (genMethod === 'imagen') {
+      // Google Imagen generation
+      toast('Generating design with Google Imagen...');
+
+      const result = await apiCall('/api/generate-design', {
+        method: 'POST',
+        body: JSON.stringify({
+          prompt: prompt,
+          size: size,
+          style: style,
+          provider: 'imagen'
+        })
+      });
+
+      imageUrl = result.imageUrl;
+      prompt = result.revised_prompt || prompt;
+    }
 
     const newImage = {
       id: Date.now().toString(),
-      prompt: result.revised_prompt || prompt,
-      imageUrl: result.imageUrl,
+      prompt: prompt,
+      imageUrl: imageUrl,
       timestamp: Date.now(),
       size: size,
+      method: generationMethod,
       downloaded: false
     };
 
     aiDesignState.generatedImages.unshift(newImage);
     renderAIGallery();
-    toast('✅ Design generated!');
+    toast(`✅ Design generated with ${genMethod === 'text-only' ? 'Text Only' : genMethod === 'dalle' ? 'DALL-E 3' : 'Google Imagen'}!`);
 
   } catch (error) {
-    console.error('AI generation failed:', error);
+    console.error('Generation failed:', error);
     toast('❌ Generation failed: ' + error.message);
   } finally {
     btn.disabled = false;
     btn.textContent = '✨ Generate Design';
   }
+}
+
+// Generate text-only design using canvas
+async function generateTextOnlyDesign(text, textColor, background, sizeStr) {
+  const [width, height] = sizeStr.split('x').map(Number);
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+
+  // Set background
+  if (background === 'transparent') {
+    ctx.clearRect(0, 0, width, height);
+  } else {
+    ctx.fillStyle = background;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  // Draw text
+  ctx.fillStyle = textColor;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Calculate font size based on canvas width
+  const fontSize = Math.floor(width / 10); // Adjust as needed
+  ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+
+  // Word wrap text
+  const words = text.split(' ');
+  const lines = [];
+  let currentLine = words[0];
+
+  for (let i = 1; i < words.length; i++) {
+    const testLine = currentLine + ' ' + words[i];
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > width * 0.9) {
+      lines.push(currentLine);
+      currentLine = words[i];
+    } else {
+      currentLine = testLine;
+    }
+  }
+  lines.push(currentLine);
+
+  // Draw each line
+  const lineHeight = fontSize * 1.2;
+  const startY = (height - (lines.length * lineHeight)) / 2;
+  lines.forEach((line, i) => {
+    ctx.fillText(line, width / 2, startY + (i * lineHeight) + fontSize / 2);
+  });
+
+  // Convert to data URL
+  return canvas.toDataURL('image/png');
 }
 
 async function downloadAIDesign(img) {

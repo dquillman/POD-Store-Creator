@@ -358,59 +358,83 @@ Format: Simple list, one prompt per line, no numbering.`;
 
 // Generate t-shirt design using DALL-E
 // POST /api/generate-design
-// Body: { prompt, negativePrompt, size, style }
+// Body: { prompt, negativePrompt, size, style, provider }
 app.post("/api/generate-design", async (req, res) => {
   try {
-    const { prompt, negativePrompt = "", size = "1024x1024", style = "natural" } = req.body;
+    const { prompt, negativePrompt = "", size = "1024x1024", style = "natural", provider = "dalle" } = req.body;
 
     if (!prompt) {
       return res.status(400).json({ ok: false, error: 'prompt is required' });
     }
 
-    const openaiApiKey = req.storeCredentials.openaiApiKey || OPENAI_API_KEY;
-
-    if (!openaiApiKey) {
-      // Return mock response if no API key
-      return res.json({
-        ok: true,
-        imageUrl: "https://via.placeholder.com/1024x1024?text=DevMode+Design",
-        revised_prompt: prompt,
-        message: "Mock image (configure OPENAI_API_KEY for real generation)"
-      });
-    }
-
     // Build enhanced prompt for t-shirt design
     const enhancedPrompt = `${prompt}. T-shirt graphic design, professional quality, suitable for print-on-demand, transparent background or clean white background, high contrast, vector-style artwork. ${negativePrompt ? `AVOID: ${negativePrompt}` : ''}`;
 
-    // Call DALL-E 3 API
-    const response = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openaiApiKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: "dall-e-3",
-        prompt: enhancedPrompt,
-        n: 1,
-        size: size,
-        quality: "standard",
-        style: style === "vivid" ? "vivid" : "natural"
-      })
-    });
+    if (provider === 'imagen') {
+      // Google Imagen via Vertex AI
+      // Note: Requires GOOGLE_CLOUD_PROJECT_ID and GOOGLE_APPLICATION_CREDENTIALS
+      const googleProjectId = process.env.GOOGLE_CLOUD_PROJECT_ID;
+      const googleApiKey = process.env.GOOGLE_API_KEY;
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error?.message || 'DALL-E API error');
+      if (!googleProjectId && !googleApiKey) {
+        return res.status(400).json({
+          ok: false,
+          error: 'Google Cloud credentials not configured. Set GOOGLE_CLOUD_PROJECT_ID or GOOGLE_API_KEY in .env'
+        });
+      }
+
+      // For now, return a note that Imagen integration is pending Google Cloud setup
+      return res.json({
+        ok: true,
+        imageUrl: "https://via.placeholder.com/" + size.replace('x', 'x') + "?text=Google+Imagen+(Setup+Required)",
+        revised_prompt: prompt,
+        message: "Google Imagen requires GOOGLE_CLOUD_PROJECT_ID or GOOGLE_API_KEY in backend/.env"
+      });
+
+    } else {
+      // DALL-E 3 (default)
+      const openaiApiKey = req.storeCredentials.openaiApiKey || OPENAI_API_KEY;
+
+      if (!openaiApiKey) {
+        // Return mock response if no API key
+        return res.json({
+          ok: true,
+          imageUrl: "https://via.placeholder.com/1024x1024?text=DevMode+Design",
+          revised_prompt: prompt,
+          message: "Mock image (configure OPENAI_API_KEY for real generation)"
+        });
+      }
+
+      // Call DALL-E 3 API
+      const response = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiApiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: "dall-e-3",
+          prompt: enhancedPrompt,
+          n: 1,
+          size: size,
+          quality: "standard",
+          style: style === "vivid" ? "vivid" : "natural"
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error?.message || 'DALL-E API error');
+      }
+
+      const result = await response.json();
+
+      res.json({
+        ok: true,
+        imageUrl: result.data[0].url,
+        revised_prompt: result.data[0].revised_prompt
+      });
     }
-
-    const result = await response.json();
-
-    res.json({
-      ok: true,
-      imageUrl: result.data[0].url,
-      revised_prompt: result.data[0].revised_prompt
-    });
   } catch (error) {
     console.error('Design generation error:', error);
     res.status(500).json({ ok: false, error: error.message });
