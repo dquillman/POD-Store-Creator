@@ -280,7 +280,7 @@
 /* =========================
    VERSION - CHANGE ONLY HERE!
    ========================= */
-const VERSION = '1.5.4';
+const VERSION = '1.6.0';
 
 /* =========================
    Configuration
@@ -2419,24 +2419,22 @@ let mockupState = {
 function renderMockupStudio() {
   const container = el('div', { style: 'display:flex;flex-direction:column;gap:16px;' });
 
-  // Upload Panel
-  const uploadPanel = el('div', { class: 'panel' }, [
-    el('h2', {}, 'Product Mockup Studio'),
-    el('p', { class: 'help' }, 'Upload your artwork and generate photorealistic product mockups using Printful.'),
+  // Design Description Panel
+  const descriptionPanel = el('div', { class: 'panel' }, [
+    el('h2', {}, 'AI Product Mockup Studio'),
+    el('p', { class: 'help' }, 'Describe your design and generate photorealistic product mockups using DALL-E (ChatGPT image creator). All customization options work!'),
 
     el('div', { style: 'margin-top:16px;' }, [
-      el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'Upload Artwork (PNG)'),
-      el('input', {
-        type: 'file',
-        id: 'mockup-file-input',
-        accept: 'image/png,image/jpeg',
+      el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'Design Description'),
+      el('textarea', {
+        id: 'mockup-design-description',
         class: 'input',
-        style: 'width:100%;',
-        onchange: handleMockupFileUpload
-      })
-    ]),
-
-    el('div', { id: 'mockup-preview', style: 'margin-top:16px;' })
+        placeholder: 'Example: white bold text saying "COFFEE FIRST" in a minimalist sans-serif font',
+        style: 'width:100%;min-height:100px;'
+      }),
+      el('div', { class: 'help', style: 'margin-top:8px;font-size:12px;' },
+        'Tip: Be specific! Describe colors, text, style, and any graphics. DALL-E will generate the entire mockup based on your description.')
+    ])
   ]);
 
   // Options Panel
@@ -2459,17 +2457,14 @@ function renderMockupStudio() {
       ])
     ]),
 
-    // Advanced Options Info
-    el('details', { style: 'margin-bottom:16px;' }, [
-      el('summary', { style: 'cursor:pointer;padding:12px;background:var(--input-bg);border-radius:8px;border:1px solid var(--border);font-weight:600;' }, '🎯 Advanced Customization (Experimental)'),
-      el('div', { style: 'padding:16px;background:var(--input-bg);border-radius:0 0 8px 8px;border:1px solid var(--border);border-top:none;' }, [
-        el('p', { class: 'help', style: 'margin-bottom:12px;font-size:13px;' },
-          '⚠️ Note: These options are saved with your request but Printful\'s mockup API uses pre-rendered images. ' +
-          'Model, location, and background are determined by the product and variant you select above. ' +
-          'These preferences are logged for future custom mockup generation features.'),
-        el('div', { style: 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px;' }, [
+    // Model & Scene Customization
+    el('div', { style: 'padding:16px;background:var(--input-bg);border-radius:8px;border:1px solid var(--border);margin-bottom:16px;' }, [
+      el('h3', { style: 'margin-bottom:12px;font-size:16px;' }, '👤 Model & Scene Customization'),
+      el('p', { class: 'help', style: 'margin-bottom:12px;font-size:13px;' },
+        '✨ All these options work! DALL-E will generate a custom mockup based on your preferences.'),
+        el('div', { style: 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;' }, [
           el('div', {}, [
-            el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;font-size:13px;' }, 'Model Gender (Preference)'),
+            el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;font-size:13px;' }, 'Model Gender'),
             el('select', { id: 'mockup-model-gender', class: 'select', style: 'width:100%;' }, [
               el('option', { value: 'any' }, 'Any'),
               el('option', { value: 'male' }, 'Male'),
@@ -2477,7 +2472,7 @@ function renderMockupStudio() {
             ])
           ]),
           el('div', {}, [
-            el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;font-size:13px;' }, 'Location (Preference)'),
+            el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;font-size:13px;' }, 'Location'),
             el('select', { id: 'mockup-location', class: 'select', style: 'width:100%;' }, [
               el('option', { value: 'studio' }, 'Studio'),
               el('option', { value: 'indoor' }, 'Indoor'),
@@ -2486,7 +2481,7 @@ function renderMockupStudio() {
             ])
           ]),
           el('div', {}, [
-            el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;font-size:13px;' }, 'Background (Preference)'),
+            el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;font-size:13px;' }, 'Background Style'),
             el('select', { id: 'mockup-background', class: 'select', style: 'width:100%;' }, [
               el('option', { value: 'solid' }, 'Solid Color'),
               el('option', { value: 'scene' }, 'Scene/Environment'),
@@ -2511,7 +2506,7 @@ function renderMockupStudio() {
     el('div', { id: 'mockup-gallery', style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:16px;' })
   ]);
 
-  container.appendChild(uploadPanel);
+  container.appendChild(descriptionPanel);
   container.appendChild(optionsPanel);
   container.appendChild(mockupGallery);
 
@@ -2597,63 +2592,91 @@ function handleMockupFileUpload(e) {
 }
 
 async function generateMockup() {
-  if (!mockupState.artworkFile) {
-    toast('Please upload artwork first');
+  const designDescription = document.getElementById('mockup-design-description')?.value.trim();
+
+  if (!designDescription) {
+    toast('❌ Please describe your design');
     return;
   }
 
   const productId = document.getElementById('mockup-product')?.value || '71';
-  const variantId = document.getElementById('mockup-variant')?.value || '4012';
+  const variantSelect = document.getElementById('mockup-variant');
+  const shirtColor = variantSelect?.options[variantSelect.selectedIndex]?.text || 'Black';
   const modelGender = document.getElementById('mockup-model-gender')?.value || 'any';
   const location = document.getElementById('mockup-location')?.value || 'studio';
   const background = document.getElementById('mockup-background')?.value || 'solid';
   const btn = document.getElementById('mockup-generate-btn');
 
   btn.disabled = true;
-  btn.textContent = '⏳ Reading file...';
+  btn.textContent = '⏳ Generating...';
 
   try {
-    // Convert file to base64
-    const reader = new FileReader();
-    const imageBase64 = await new Promise((resolve, reject) => {
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(mockupState.artworkFile);
-    });
+    toast('🎨 Creating AI mockup with DALL-E...');
 
-    btn.textContent = '⏳ Uploading to CDN...';
-    toast('Uploading artwork to Shopify CDN...');
+    // Build detailed mockup prompt
+    const productTypes = {
+      '71': 't-shirt',
+      '19': 'hoodie',
+      '388': 'tank top'
+    };
+    const product = productTypes[productId] || 't-shirt';
 
-    // Brief delay to show the upload message
-    await new Promise(resolve => setTimeout(resolve, 500));
+    // Gender mapping
+    const genderDesc = modelGender === 'male' ? 'man' : modelGender === 'female' ? 'woman' : 'person';
 
-    btn.textContent = '⏳ Generating mockup...';
-    toast('Creating mockup with Printful...');
+    // Location descriptions
+    const locationDescs = {
+      'studio': 'professional studio with neutral backdrop',
+      'indoor': 'casual indoor setting',
+      'outdoor': 'natural outdoor environment',
+      'urban': 'urban street setting with buildings'
+    };
+    const locationDesc = locationDescs[location] || locationDescs['studio'];
 
-    const result = await apiCall('/api/mockup', {
+    // Background descriptions
+    const backgroundDescs = {
+      'solid': 'clean solid color background',
+      'scene': 'environmental scene with depth',
+      'minimal': 'minimalist clean background'
+    };
+    const backgroundDesc = backgroundDescs[background] || backgroundDescs['solid'];
+
+    // Construct DALL-E prompt
+    const prompt = `Professional product photography of a ${genderDesc} wearing a ${shirtColor.toLowerCase()} ${product}. ` +
+                   `The ${product} features this design: ${designDescription}. ` +
+                   `Setting: ${locationDesc}, ${backgroundDesc}. ` +
+                   `Photorealistic, high quality, centered composition, well-lit, fashion photography style. ` +
+                   `The design on the ${product} should be clearly visible and prominent.`;
+
+    console.log('Mockup prompt:', prompt);
+
+    const result = await apiCall('/api/generate-design', {
       method: 'POST',
       body: JSON.stringify({
-        imageBase64: imageBase64,
-        productId: parseInt(productId),
-        variantId: parseInt(variantId),
-        modelGender: modelGender,
-        location: location,
-        background: background
+        prompt: prompt,
+        size: '1024x1024',
+        style: 'vivid',
+        provider: 'dalle'
       })
     });
 
-    if (result.mockups && result.mockups.length > 0) {
-      mockupState.generatedMockups.push({
-        id: Date.now().toString(),
-        mockups: result.mockups,
-        timestamp: Date.now()
-      });
-
-      renderMockupGallery();
-      toast('✅ Mockup generated!');
-    } else {
-      toast('No mockups returned from Printful');
+    if (!result.ok || !result.imageUrl) {
+      throw new Error(result.error || 'Mockup generation failed');
     }
+
+    mockupState.generatedMockups.push({
+      id: Date.now().toString(),
+      mockups: [{
+        url: result.imageUrl,
+        placement: 'front',
+        description: designDescription,
+        settings: { modelGender, location, background, shirtColor, product }
+      }],
+      timestamp: Date.now()
+    });
+
+    renderMockupGallery();
+    toast('✅ AI mockup generated!');
 
   } catch (error) {
     console.error('Mockup generation failed:', error);
