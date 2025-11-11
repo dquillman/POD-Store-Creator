@@ -577,7 +577,19 @@ app.post("/api/upload-image", async (req, res) => {
       throw new Error('Shopify file create failed: ' + JSON.stringify(fileCreateData.errors || fileCreateData.data.fileCreate.userErrors));
     }
 
-    const imageUrl = fileCreateData.data.fileCreate.files[0].image.url;
+    console.log('Shopify file create response:', JSON.stringify(fileCreateData, null, 2));
+
+    // Check if file and image URL exist
+    const file = fileCreateData.data?.fileCreate?.files?.[0];
+    if (!file) {
+      throw new Error('No file returned from Shopify fileCreate');
+    }
+
+    if (!file.image || !file.image.url) {
+      throw new Error('Image URL not available in Shopify response. File may still be processing.');
+    }
+
+    const imageUrl = file.image.url;
 
     res.json({
       ok: true,

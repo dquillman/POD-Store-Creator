@@ -280,7 +280,7 @@
 /* =========================
    VERSION - CHANGE ONLY HERE!
    ========================= */
-const VERSION = '1.4.0';
+const VERSION = '1.4.1';
 
 /* =========================
    Configuration
@@ -1329,10 +1329,13 @@ function updateDesignGeneratorSection() {
   });
 
   // Size selector
-  const sizeSelect = el('select',{id:'designSizeSelect',class:'select',style:'width:150px;margin-left:8px;'},[
-    el('option',{value:'1024x1024'},'1024x1024 (Square)'),
-    el('option',{value:'1024x1792'},'1024x1792 (Portrait)'),
-    el('option',{value:'1792x1024'},'1792x1024 (Landscape)')
+  const sizeSelect = el('select',{id:'designSizeSelect',class:'select',style:'width:200px;margin-left:8px;'},[
+    el('option',{value:'4500x4500',selected:'selected'},'4500x4500 @ 300 DPI'),
+    el('option',{value:'4500x5400'},'4500x5400 @ 300 DPI'),
+    el('option',{value:'5400x4500'},'5400x4500 @ 300 DPI'),
+    el('option',{value:'1024x1024'},'1024x1024 (Preview)'),
+    el('option',{value:'1024x1792'},'1024x1792 (Preview)'),
+    el('option',{value:'1792x1024'},'1792x1024 (Preview)')
   ]);
 
   section.appendChild(el('div',{style:'display:flex;gap:8px;align-items:center;'},[
