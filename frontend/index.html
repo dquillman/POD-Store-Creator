@@ -280,7 +280,7 @@
 /* =========================
    VERSION - CHANGE ONLY HERE!
    ========================= */
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 
 /* =========================
    Configuration
@@ -544,6 +544,7 @@ async function switchTab(idx){
   }else if(spec.appId==='wescale-pod-console'){
     // Asset Audit, AI Design Generator, and Mockup Studio are available in POD Console
     if(tab.id==='asset-audit') content.appendChild(renderAuditTab());
+    else if(tab.id==='selector') content.appendChild(renderAuditTab()); // Mini-Audit shows Asset Audit
     else if(tab.id==='ai-design-generator') content.appendChild(renderAIDesignGenerator());
     else if(tab.id==='mockup-studio') content.appendChild(renderMockupStudio());
     else content.appendChild(renderPODScaffold());
@@ -1657,15 +1658,79 @@ function renderAIDesignGenerator() {
   // Input Panel
   const inputPanel = el('div', { class: 'panel' }, [
     el('h2', {}, 'AI Design Generator'),
-    el('p', { class: 'help' }, 'Generate artwork using DALL-E 3. Perfect for creating t-shirt designs, logos, and graphics.'),
+    el('p', { class: 'help' }, 'Generate print-ready artwork for t-shirts. Design ONLY the graphic - mockups come later!'),
 
-    el('label', { style: 'display:block;margin-top:16px;font-weight:600;' }, 'Prompt'),
-    el('textarea', {
-      id: 'ai-prompt',
-      class: 'input',
-      placeholder: 'Example: DevMode logo with bold white typography, minimalist design, high contrast, suitable for t-shirt printing',
-      style: 'width:100%;min-height:100px;margin-top:8px;'
-    }),
+    // Design Mode Toggle
+    el('div', { style: 'margin:16px 0;padding:12px;background:var(--input-bg);border-radius:8px;border:1px solid var(--border);' }, [
+      el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'Design Mode'),
+      el('div', { style: 'display:flex;gap:12px;' }, [
+        el('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer;' }, [
+          el('input', { type: 'radio', name: 'ai-mode', value: 'simple', checked: 'checked', onchange: () => toggleAIMode('simple') }),
+          el('span', {}, 'Simple (Text Only)')
+        ]),
+        el('label', { style: 'display:flex;align-items:center;gap:8px;cursor:pointer;' }, [
+          el('input', { type: 'radio', name: 'ai-mode', value: 'custom', onchange: () => toggleAIMode('custom') }),
+          el('span', {}, 'Custom Prompt')
+        ])
+      ])
+    ]),
+
+    // Simple Mode (default)
+    el('div', { id: 'ai-simple-mode', style: 'display:block;' }, [
+      el('label', { style: 'display:block;margin-top:16px;font-weight:600;' }, 'Text for Design'),
+      el('input', {
+        id: 'ai-text',
+        class: 'input',
+        placeholder: 'Example: KEEP CALM AND CODE ON',
+        style: 'width:100%;margin-top:8px;'
+      }),
+
+      el('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;' }, [
+        el('div', {}, [
+          el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'Text Color'),
+          el('select', { id: 'ai-text-color', class: 'select', style: 'width:100%;' }, [
+            el('option', { value: 'white' }, 'White (recommended for dark shirts)'),
+            el('option', { value: 'black' }, 'Black (for light shirts)'),
+            el('option', { value: 'red' }, 'Red'),
+            el('option', { value: 'blue' }, 'Blue'),
+            el('option', { value: 'green' }, 'Green'),
+            el('option', { value: 'yellow' }, 'Yellow'),
+            el('option', { value: 'multicolor' }, 'Multicolor')
+          ])
+        ]),
+        el('div', {}, [
+          el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'Background'),
+          el('select', { id: 'ai-background', class: 'select', style: 'width:100%;' }, [
+            el('option', { value: 'transparent' }, 'Transparent (for POD)'),
+            el('option', { value: 'black' }, 'Black'),
+            el('option', { value: 'white' }, 'White'),
+            el('option', { value: 'none' }, 'None (artistic)')
+          ])
+        ])
+      ]),
+
+      el('label', { style: 'display:block;margin-top:16px;font-weight:600;' }, 'Design Style'),
+      el('select', { id: 'ai-design-style', class: 'select', style: 'width:100%;margin-top:8px;' }, [
+        el('option', { value: 'minimalist' }, 'Minimalist Typography'),
+        el('option', { value: 'bold' }, 'Bold & Impactful'),
+        el('option', { value: 'retro' }, 'Retro/Vintage'),
+        el('option', { value: 'modern' }, 'Modern & Clean'),
+        el('option', { value: 'grunge' }, 'Grunge/Distressed'),
+        el('option', { value: 'geometric' }, 'Geometric Shapes'),
+        el('option', { value: 'hand-drawn' }, 'Hand-Drawn/Sketchy')
+      ])
+    ]),
+
+    // Custom Mode (hidden by default)
+    el('div', { id: 'ai-custom-mode', style: 'display:none;' }, [
+      el('label', { style: 'display:block;margin-top:16px;font-weight:600;' }, 'Custom Prompt'),
+      el('textarea', {
+        id: 'ai-prompt',
+        class: 'input',
+        placeholder: 'Example: minimalist white typography saying "CODE COFFEE REPEAT", transparent background, suitable for t-shirt printing',
+        style: 'width:100%;min-height:100px;margin-top:8px;'
+      })
+    ]),
 
     el('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px;' }, [
       el('div', {}, [
@@ -1681,14 +1746,14 @@ function renderAIDesignGenerator() {
         ])
       ]),
       el('div', {}, [
-        el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'Style'),
+        el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'AI Style'),
         el('select', {
           id: 'ai-style',
           class: 'select',
           style: 'width:100%;'
         }, [
-          el('option', { value: 'natural' }, 'Natural'),
-          el('option', { value: 'vivid' }, 'Vivid')
+          el('option', { value: 'vivid' }, 'Vivid (Higher Quality)'),
+          el('option', { value: 'natural' }, 'Natural')
         ])
       ])
     ]),
@@ -1759,20 +1824,77 @@ function renderAIGallery() {
   });
 }
 
+function toggleAIMode(mode) {
+  const simpleMode = document.getElementById('ai-simple-mode');
+  const customMode = document.getElementById('ai-custom-mode');
+
+  if (mode === 'simple') {
+    simpleMode.style.display = 'block';
+    customMode.style.display = 'none';
+  } else {
+    simpleMode.style.display = 'none';
+    customMode.style.display = 'block';
+  }
+}
+
 async function generateAIDesign() {
-  const promptEl = document.getElementById('ai-prompt');
+  const btn = document.getElementById('ai-generate-btn');
   const sizeEl = document.getElementById('ai-size');
   const styleEl = document.getElementById('ai-style');
-  const btn = document.getElementById('ai-generate-btn');
 
-  const prompt = promptEl?.value.trim();
-  if (!prompt) {
-    toast('Please enter a prompt');
-    return;
+  // Check which mode is active
+  const mode = document.querySelector('input[name="ai-mode"]:checked')?.value || 'simple';
+
+  let prompt = '';
+
+  if (mode === 'simple') {
+    // Build prompt from simple mode fields
+    const text = document.getElementById('ai-text')?.value.trim();
+    if (!text) {
+      toast('Please enter text for your design');
+      return;
+    }
+
+    const textColor = document.getElementById('ai-text-color')?.value || 'white';
+    const background = document.getElementById('ai-background')?.value || 'transparent';
+    const designStyle = document.getElementById('ai-design-style')?.value || 'minimalist';
+
+    // Construct POD-optimized prompt
+    const styleDescriptions = {
+      'minimalist': 'minimalist, clean, simple',
+      'bold': 'bold, impactful, strong typography',
+      'retro': 'retro, vintage, nostalgic',
+      'modern': 'modern, sleek, contemporary',
+      'grunge': 'grunge, distressed, rough texture',
+      'geometric': 'geometric shapes, abstract',
+      'hand-drawn': 'hand-drawn, sketchy, artistic'
+    };
+
+    const backgroundInstructions = {
+      'transparent': 'completely transparent background, PNG format',
+      'black': 'solid black background',
+      'white': 'solid white background',
+      'none': 'artistic background that complements the design'
+    };
+
+    prompt = `${styleDescriptions[designStyle]} typography design with the text "${text}". ` +
+             `Use ${textColor} text color. ` +
+             `${backgroundInstructions[background]}. ` +
+             `High contrast, print-ready, suitable for t-shirt printing. ` +
+             `DO NOT include mockups or t-shirt images - ONLY the graphic design itself.`;
+
+  } else {
+    // Custom mode - use direct prompt
+    const promptEl = document.getElementById('ai-prompt');
+    prompt = promptEl?.value.trim();
+    if (!prompt) {
+      toast('Please enter a prompt');
+      return;
+    }
   }
 
   const size = sizeEl?.value || '1024x1024';
-  const style = styleEl?.value || 'natural';
+  const style = styleEl?.value || 'vivid';
 
   btn.disabled = true;
   btn.textContent = '⏳ Generating...';
