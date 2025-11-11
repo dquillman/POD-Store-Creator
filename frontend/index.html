@@ -280,7 +280,7 @@
 /* =========================
    VERSION - CHANGE ONLY HERE!
    ========================= */
-const VERSION = '1.5.3';
+const VERSION = '1.5.4';
 
 /* =========================
    Configuration
@@ -2447,55 +2447,54 @@ function renderMockupStudio() {
     el('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;' }, [
       el('div', {}, [
         el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'Product Type'),
-        el('select', { id: 'mockup-product', class: 'select', style: 'width:100%;' }, [
-          el('option', { value: '71' }, 'Unisex T-Shirt'),
-          el('option', { value: '19' }, 'Hoodie'),
-          el('option', { value: '388' }, 'Tank Top')
+        el('select', { id: 'mockup-product', class: 'select', style: 'width:100%;', onchange: updateColorOptions }, [
+          el('option', { value: '71' }, 'Unisex T-Shirt (Bella+Canvas 3001)'),
+          el('option', { value: '19' }, 'Unisex Hoodie'),
+          el('option', { value: '388' }, 'Unisex Tank Top')
         ])
       ]),
       el('div', {}, [
         el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'Shirt Color'),
-        el('select', { id: 'mockup-variant', class: 'select', style: 'width:100%;' }, [
-          el('option', { value: '4012' }, 'Black'),
-          el('option', { value: '4013' }, 'White'),
-          el('option', { value: '4014' }, 'Heather Gray'),
-          el('option', { value: '4016' }, 'Navy')
-        ])
+        el('select', { id: 'mockup-variant', class: 'select', style: 'width:100%;' })
       ])
     ]),
 
-    // Model Customization
-    el('div', { style: 'padding:16px;background:var(--input-bg);border-radius:8px;border:1px solid var(--border);margin-bottom:16px;' }, [
-      el('h3', { style: 'margin-bottom:12px;font-size:16px;' }, '👤 Model & Scene Customization'),
-      el('div', { style: 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;' }, [
-        el('div', {}, [
-          el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;font-size:13px;' }, 'Model Gender'),
-          el('select', { id: 'mockup-model-gender', class: 'select', style: 'width:100%;' }, [
-            el('option', { value: 'any' }, 'Any'),
-            el('option', { value: 'male' }, 'Male'),
-            el('option', { value: 'female' }, 'Female')
-          ])
-        ]),
-        el('div', {}, [
-          el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;font-size:13px;' }, 'Location'),
-          el('select', { id: 'mockup-location', class: 'select', style: 'width:100%;' }, [
-            el('option', { value: 'studio' }, 'Studio'),
-            el('option', { value: 'indoor' }, 'Indoor'),
-            el('option', { value: 'outdoor' }, 'Outdoor'),
-            el('option', { value: 'urban' }, 'Urban')
-          ])
-        ]),
-        el('div', {}, [
-          el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;font-size:13px;' }, 'Background'),
-          el('select', { id: 'mockup-background', class: 'select', style: 'width:100%;' }, [
-            el('option', { value: 'solid' }, 'Solid Color'),
-            el('option', { value: 'scene' }, 'Scene/Environment'),
-            el('option', { value: 'minimal' }, 'Minimal/Clean')
+    // Advanced Options Info
+    el('details', { style: 'margin-bottom:16px;' }, [
+      el('summary', { style: 'cursor:pointer;padding:12px;background:var(--input-bg);border-radius:8px;border:1px solid var(--border);font-weight:600;' }, '🎯 Advanced Customization (Experimental)'),
+      el('div', { style: 'padding:16px;background:var(--input-bg);border-radius:0 0 8px 8px;border:1px solid var(--border);border-top:none;' }, [
+        el('p', { class: 'help', style: 'margin-bottom:12px;font-size:13px;' },
+          '⚠️ Note: These options are saved with your request but Printful\'s mockup API uses pre-rendered images. ' +
+          'Model, location, and background are determined by the product and variant you select above. ' +
+          'These preferences are logged for future custom mockup generation features.'),
+        el('div', { style: 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-top:12px;' }, [
+          el('div', {}, [
+            el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;font-size:13px;' }, 'Model Gender (Preference)'),
+            el('select', { id: 'mockup-model-gender', class: 'select', style: 'width:100%;' }, [
+              el('option', { value: 'any' }, 'Any'),
+              el('option', { value: 'male' }, 'Male'),
+              el('option', { value: 'female' }, 'Female')
+            ])
+          ]),
+          el('div', {}, [
+            el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;font-size:13px;' }, 'Location (Preference)'),
+            el('select', { id: 'mockup-location', class: 'select', style: 'width:100%;' }, [
+              el('option', { value: 'studio' }, 'Studio'),
+              el('option', { value: 'indoor' }, 'Indoor'),
+              el('option', { value: 'outdoor' }, 'Outdoor'),
+              el('option', { value: 'urban' }, 'Urban')
+            ])
+          ]),
+          el('div', {}, [
+            el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;font-size:13px;' }, 'Background (Preference)'),
+            el('select', { id: 'mockup-background', class: 'select', style: 'width:100%;' }, [
+              el('option', { value: 'solid' }, 'Solid Color'),
+              el('option', { value: 'scene' }, 'Scene/Environment'),
+              el('option', { value: 'minimal' }, 'Minimal/Clean')
+            ])
           ])
         ])
-      ]),
-      el('p', { class: 'help', style: 'margin-top:12px;font-size:12px;' },
-        '⚠️ Note: Printful API may have limited support for these options. Results may vary.')
+      ])
     ]),
 
     el('button', {
@@ -2516,7 +2515,65 @@ function renderMockupStudio() {
   container.appendChild(optionsPanel);
   container.appendChild(mockupGallery);
 
+  // Initialize color options
+  setTimeout(() => updateColorOptions(), 0);
+
   return container;
+}
+
+// Update color options based on selected product
+function updateColorOptions() {
+  const productId = document.getElementById('mockup-product')?.value || '71';
+  const variantSelect = document.getElementById('mockup-variant');
+  if (!variantSelect) return;
+
+  variantSelect.innerHTML = '';
+
+  // Printful variant IDs for different products
+  const variantsByProduct = {
+    '71': [ // Bella+Canvas 3001 Unisex T-Shirt
+      { id: '4012', name: 'Black', color: '#000000' },
+      { id: '4013', name: 'White', color: '#FFFFFF' },
+      { id: '4014', name: 'Heather Gray', color: '#9E9E9E' },
+      { id: '4016', name: 'Navy', color: '#000080' },
+      { id: '4017', name: 'Dark Grey Heather', color: '#3C3C3C' },
+      { id: '4018', name: 'Athletic Heather', color: '#C0C0C0' },
+      { id: '4020', name: 'Red', color: '#FF0000' },
+      { id: '4021', name: 'Royal Blue', color: '#4169E1' },
+      { id: '4024', name: 'Kelly Green', color: '#4CBB17' },
+      { id: '4025', name: 'Brown', color: '#8B4513' },
+      { id: '4026', name: 'Forest Green', color: '#228B22' },
+      { id: '4027', name: 'Maroon', color: '#800000' },
+      { id: '4028', name: 'Light Blue', color: '#ADD8E6' },
+      { id: '4029', name: 'Light Pink', color: '#FFB6C1' },
+      { id: '4030', name: 'Yellow', color: '#FFFF00' },
+      { id: '4032', name: 'Orange', color: '#FFA500' },
+      { id: '4033', name: 'Purple', color: '#800080' }
+    ],
+    '19': [ // Unisex Hoodie
+      { id: '4191', name: 'Black', color: '#000000' },
+      { id: '4192', name: 'White', color: '#FFFFFF' },
+      { id: '4193', name: 'Heather Gray', color: '#9E9E9E' },
+      { id: '4194', name: 'Navy', color: '#000080' },
+      { id: '4195', name: 'Dark Heather', color: '#3C3C3C' },
+      { id: '4196', name: 'Sport Grey', color: '#808080' }
+    ],
+    '388': [ // Unisex Tank Top
+      { id: '9168', name: 'Black', color: '#000000' },
+      { id: '9169', name: 'White', color: '#FFFFFF' },
+      { id: '9170', name: 'Heather Gray', color: '#9E9E9E' },
+      { id: '9172', name: 'Navy', color: '#000080' },
+      { id: '9173', name: 'Red', color: '#FF0000' },
+      { id: '9174', name: 'Royal Blue', color: '#4169E1' }
+    ]
+  };
+
+  const variants = variantsByProduct[productId] || variantsByProduct['71'];
+
+  variants.forEach(variant => {
+    const option = el('option', { value: variant.id }, variant.name);
+    variantSelect.appendChild(option);
+  });
 }
 
 function handleMockupFileUpload(e) {
