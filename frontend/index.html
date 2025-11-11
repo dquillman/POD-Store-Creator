@@ -280,7 +280,7 @@
 /* =========================
    VERSION - CHANGE ONLY HERE!
    ========================= */
-const VERSION = '1.5.1';
+const VERSION = '1.5.2';
 
 /* =========================
    Configuration
@@ -1397,12 +1397,16 @@ async function generateDesignFromPrompt() {
   try {
     toast('🎨 Generating design with DALL-E...');
 
+    // DALL-E 3 max is 1792x1792, so convert large POD sizes
+    const dalleSize = (size.startsWith('4500') || size.startsWith('5400')) ? '1024x1024' : size;
+
     const result = await apiCall('/api/generate-design', {
       method: 'POST',
       body: JSON.stringify({
         prompt: prompt,
-        size: size,
-        style: 'vivid'
+        size: dalleSize,
+        style: 'vivid',
+        provider: 'dalle'
       })
     });
 

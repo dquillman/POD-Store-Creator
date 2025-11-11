@@ -580,16 +580,54 @@ app.post("/api/upload-image", async (req, res) => {
     console.log('Shopify file create response:', JSON.stringify(fileCreateData, null, 2));
 
     // Check if file and image URL exist
-    const file = fileCreateData.data?.fileCreate?.files?.[0];
+    let file = fileCreateData.data?.fileCreate?.files?.[0];
     if (!file) {
       throw new Error('No file returned from Shopify fileCreate');
     }
 
-    if (!file.image || !file.image.url) {
-      throw new Error('Image URL not available in Shopify response. File may still be processing.');
+    // If image URL not immediately available, poll for it
+    let imageUrl = file.image?.url;
+    let retries = 0;
+    const maxRetries = 5;
+
+    while (!imageUrl && retries < maxRetries) {
+      console.log(`Image URL not ready, waiting 2 seconds (retry ${retries + 1}/${maxRetries})...`);
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Query the file again to check if processing is complete
+      const fileQueryMutation = `
+        query ($id: ID!) {
+          node(id: $id) {
+            ... on MediaImage {
+              id
+              image {
+                url
+              }
+            }
+          }
+        }
+      `;
+
+      const fileQueryResponse = await fetch(`https://${SHOPIFY_STORE}/admin/api/2024-01/graphql.json`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
+        },
+        body: JSON.stringify({
+          query: fileQueryMutation,
+          variables: { id: file.id }
+        })
+      });
+
+      const fileQueryData = await fileQueryResponse.json();
+      imageUrl = fileQueryData.data?.node?.image?.url;
+      retries++;
     }
 
-    const imageUrl = file.image.url;
+    if (!imageUrl) {
+      throw new Error('Image URL not available after retries. File may still be processing.');
+    }
 
     res.json({
       ok: true,
