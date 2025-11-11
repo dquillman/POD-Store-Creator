@@ -280,7 +280,7 @@
 /* =========================
    VERSION - CHANGE ONLY HERE!
    ========================= */
-const VERSION = '1.5.0';
+const VERSION = '1.5.1';
 
 /* =========================
    Configuration
@@ -576,7 +576,33 @@ function renderAuditTab(){
   ]);
   // Right
   const right = el('div',{class:'panel'},[
-    el('h2',{},'Preview'),
+    el('div',{style:'display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;'},[
+      el('h2',{style:'margin:0;'},'Preview'),
+      el('div',{style:'display:flex;gap:8px;'},[
+        el('button',{
+          id:'bg-dark-btn',
+          class:'btn active',
+          style:'padding:6px 12px;font-size:12px;',
+          onclick:()=>{
+            previewBgColor='#333';
+            document.getElementById('bg-dark-btn').classList.add('active');
+            document.getElementById('bg-white-btn').classList.remove('active');
+            if(activePreviewIdx>=0) preview(activePreviewIdx);
+          }
+        },'🌑 Dark'),
+        el('button',{
+          id:'bg-white-btn',
+          class:'btn',
+          style:'padding:6px 12px;font-size:12px;',
+          onclick:()=>{
+            previewBgColor='#ffffff';
+            document.getElementById('bg-white-btn').classList.add('active');
+            document.getElementById('bg-dark-btn').classList.remove('active');
+            if(activePreviewIdx>=0) preview(activePreviewIdx);
+          }
+        },'⚪ White')
+      ])
+    ]),
     el('canvas',{id:'previewCanvas',width:600,height:720}),
     el('div',{id:'previewInfo',class:'preview-info'},''),
     el('div',{class:'help',style:'margin-top:8px;'},
@@ -728,6 +754,7 @@ async function analyze(img){
   return { hasTransparency, bgLikely, sizeOk, styleAOk, width: w, height: h };
 }
 let activePreviewIdx = -1;
+let previewBgColor = '#333'; // dark gray default
 
 function preview(idx){
   try {
@@ -750,14 +777,9 @@ function preview(idx){
     const ctx=cvs.getContext('2d');
     ctx.clearRect(0,0,cvs.width,cvs.height);
 
-    // Fill with checkerboard pattern to show transparency
-    const tileSize = 20;
-    for (let y = 0; y < cvs.height; y += tileSize) {
-      for (let x = 0; x < cvs.width; x += tileSize) {
-        ctx.fillStyle = ((x / tileSize) + (y / tileSize)) % 2 === 0 ? '#e0e0e0' : '#f5f5f5';
-        ctx.fillRect(x, y, tileSize, tileSize);
-      }
-    }
+    // Fill with selected background color
+    ctx.fillStyle = previewBgColor;
+    ctx.fillRect(0, 0, cvs.width, cvs.height);
 
     const ratio=Math.min(cvs.width/row._img.naturalWidth,cvs.height/row._img.naturalHeight);
     const w=Math.round(row._img.naturalWidth*ratio), h=Math.round(row._img.naturalHeight*ratio);
@@ -1330,8 +1352,8 @@ function updateDesignGeneratorSection() {
 
   // Size selector
   const sizeSelect = el('select',{id:'designSizeSelect',class:'select',style:'width:200px;margin-left:8px;'},[
-    el('option',{value:'4500x4500',selected:'selected'},'4500x4500 @ 300 DPI'),
-    el('option',{value:'4500x5400'},'4500x5400 @ 300 DPI'),
+    el('option',{value:'4500x5400',selected:'selected'},'4500x5400 @ 300 DPI'),
+    el('option',{value:'4500x4500'},'4500x4500 @ 300 DPI'),
     el('option',{value:'5400x4500'},'5400x4500 @ 300 DPI'),
     el('option',{value:'1024x1024'},'1024x1024 (Preview)'),
     el('option',{value:'1024x1792'},'1024x1792 (Preview)'),
@@ -1777,8 +1799,8 @@ function renderAIDesignGenerator() {
           class: 'select',
           style: 'width:100%;'
         }, [
-          el('option', { value: '4500x4500', selected: 'selected' }, '4500x4500 @ 300 DPI (POD Standard)'),
-          el('option', { value: '4500x5400' }, '4500x5400 @ 300 DPI (Portrait)'),
+          el('option', { value: '4500x5400', selected: 'selected' }, '4500x5400 @ 300 DPI (POD Standard)'),
+          el('option', { value: '4500x4500' }, '4500x4500 @ 300 DPI (Square)'),
           el('option', { value: '5400x4500' }, '5400x4500 @ 300 DPI (Landscape)'),
           el('option', { value: '1024x1024' }, '1024x1024 (Preview/Test)'),
           el('option', { value: '1024x1792' }, '1024x1792 (Preview Portrait)'),
