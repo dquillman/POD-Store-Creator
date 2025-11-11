@@ -280,7 +280,7 @@
 /* =========================
    VERSION - CHANGE ONLY HERE!
    ========================= */
-const VERSION = '1.3.0';
+const VERSION = '1.3.1';
 
 /* =========================
    Configuration
@@ -544,10 +544,9 @@ async function switchTab(idx){
   }else if(spec.appId==='wescale-pod-console'){
     // Asset Audit, AI Design Generator, and Mockup Studio are available in POD Console
     if(tab.id==='asset-audit') content.appendChild(renderAuditTab());
-    else if(tab.id==='selector') content.appendChild(renderAuditTab()); // Mini-Audit shows Asset Audit
     else if(tab.id==='ai-design-generator') content.appendChild(renderAIDesignGenerator());
     else if(tab.id==='mockup-studio') content.appendChild(renderMockupStudio());
-    else content.appendChild(renderPODScaffold());
+    else content.appendChild(renderPODScaffold()); // All other tabs show POD Workflow
   }
 }
 
@@ -1147,6 +1146,17 @@ function renderSettingsTab(){
 let podData = { trends: [], prompts: [], mockups: [], listings: [] };
 
 function renderPODScaffold(){
+  // Auto-populate mockup URL if there's a pending one from Step 2.5
+  setTimeout(() => {
+    if (podData.pendingMockupUrl) {
+      const field = document.getElementById('mockupImageUrl');
+      if (field && !field.value) {
+        field.value = podData.pendingMockupUrl;
+        delete podData.pendingMockupUrl;
+      }
+    }
+  }, 100);
+
   return el('div',{},[
     el('div',{class:'panel'},[
       el('h2',{},'POD Workflow Console'),
@@ -1437,8 +1447,16 @@ function renderGeneratedDesignsGallery() {
           class:'btn',
           style:'flex:1;font-size:11px;padding:4px;',
           onclick:()=>{
-            document.getElementById('mockupImageUrl').value = design.imageUrl;
-            toast('URL copied to Step 3');
+            const mockupField = document.getElementById('mockupImageUrl');
+            if (mockupField) {
+              mockupField.value = design.imageUrl;
+              mockupField.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              toast('✅ URL copied to Step 3 - scroll down to see!');
+            } else {
+              // Store for later use
+              if (!podData.pendingMockupUrl) podData.pendingMockupUrl = design.imageUrl;
+              toast('✅ URL saved - it will appear when you navigate to Step 3');
+            }
           }
         },'Use in Step 3'),
         el('a',{
