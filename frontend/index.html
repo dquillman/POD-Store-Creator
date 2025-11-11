@@ -280,7 +280,7 @@
 /* =========================
    VERSION - CHANGE ONLY HERE!
    ========================= */
-const VERSION = '1.1.1';
+const VERSION = '1.2.0';
 
 /* =========================
    Configuration
@@ -1181,6 +1181,16 @@ function renderPODScaffold(){
       ])
     ]),
 
+    // Design Generation Section (Step 2.5)
+    el('div',{class:'panel',style:'margin-top:12px;'},[
+      el('h2',{},'2.5. Generate Designs'),
+      el('div',{class:'help'},'Create artwork from your prompts using AI'),
+      el('div',{id:'designGeneratorSection',style:'margin:12px 0;'},[
+        el('div',{class:'muted',style:'font-size:13px;'},'Generate prompts first (Step 2) to use this feature')
+      ]),
+      el('div',{id:'generatedDesignsOutput',style:'margin-top:12px;'})
+    ]),
+
     // Mockups & Listings Section
     el('div',{class:'split',style:'margin-top:12px;'},[
       el('div',{class:'panel'},[
@@ -1282,10 +1292,166 @@ async function generatePrompts(){
     output.appendChild(el('div',{class:'good',style:'margin-bottom:8px;'},'✓ Generated ' + result.prompts.length + ' prompts'));
     output.appendChild(list);
     toast('Prompts generated!');
+
+    // Populate Step 2.5 Design Generator with prompts
+    updateDesignGeneratorSection();
   } catch (error) {
     output.innerHTML = '';
     output.appendChild(el('div',{class:'bad'},'Error: ' + error.message));
   }
+}
+
+// Update Design Generator Section (Step 2.5)
+function updateDesignGeneratorSection() {
+  const section = document.getElementById('designGeneratorSection');
+  if (!section) return;
+
+  if (!podData.prompts || podData.prompts.length === 0) {
+    section.innerHTML = '';
+    section.appendChild(el('div',{class:'muted',style:'font-size:13px;'},'Generate prompts first (Step 2) to use this feature'));
+    return;
+  }
+
+  section.innerHTML = '';
+  section.appendChild(el('div',{class:'help',style:'margin-bottom:12px;'},'Select a prompt and generate design artwork:'));
+
+  // Dropdown to select prompt
+  const promptSelect = el('select',{id:'selectedPromptIndex',class:'select',style:'width:100%;margin-bottom:8px;font-size:13px;'});
+  podData.prompts.forEach((prompt, idx) => {
+    const truncated = prompt.length > 80 ? prompt.substring(0, 80) + '...' : prompt;
+    promptSelect.appendChild(el('option',{value:idx.toString()},`${idx + 1}. ${truncated}`));
+  });
+
+  // Size selector
+  const sizeSelect = el('select',{id:'designSizeSelect',class:'select',style:'width:150px;margin-left:8px;'},[
+    el('option',{value:'1024x1024'},'1024x1024 (Square)'),
+    el('option',{value:'1024x1792'},'1024x1792 (Portrait)'),
+    el('option',{value:'1792x1024'},'1792x1024 (Landscape)')
+  ]);
+
+  section.appendChild(el('div',{style:'display:flex;gap:8px;align-items:center;'},[
+    el('label',{},'Prompt:'),
+    promptSelect
+  ]));
+
+  section.appendChild(el('div',{style:'display:flex;gap:8px;align-items:center;margin-top:8px;'},[
+    el('label',{},'Size:'),
+    sizeSelect,
+    el('button',{
+      class:'btn',
+      id:'generateDesignBtn',
+      onclick:generateDesignFromPrompt,
+      style:'margin-left:auto;'
+    },'🎨 Generate Design')
+  ]));
+}
+
+// Generate Design from Selected Prompt
+async function generateDesignFromPrompt() {
+  const promptIndex = parseInt(document.getElementById('selectedPromptIndex')?.value || '0');
+  const size = document.getElementById('designSizeSelect')?.value || '1024x1024';
+  const btn = document.getElementById('generateDesignBtn');
+  const output = document.getElementById('generatedDesignsOutput');
+
+  if (!podData.prompts || promptIndex >= podData.prompts.length) {
+    toast('❌ No prompt selected');
+    return;
+  }
+
+  const prompt = podData.prompts[promptIndex];
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Generating...';
+
+  try {
+    toast('🎨 Generating design with DALL-E...');
+
+    const result = await apiCall('/api/generate-design', {
+      method: 'POST',
+      body: JSON.stringify({
+        prompt: prompt,
+        size: size,
+        style: 'vivid'
+      })
+    });
+
+    if (!result.ok || !result.imageUrl) {
+      throw new Error(result.error || 'Design generation failed');
+    }
+
+    // Store generated design
+    if (!podData.generatedDesigns) podData.generatedDesigns = [];
+    const design = {
+      id: Date.now().toString(),
+      prompt: prompt,
+      imageUrl: result.imageUrl,
+      size: size,
+      timestamp: Date.now()
+    };
+    podData.generatedDesigns.push(design);
+
+    // Auto-populate mockup URL field
+    const mockupUrlInput = document.getElementById('mockupImageUrl');
+    if (mockupUrlInput) {
+      mockupUrlInput.value = result.imageUrl;
+    }
+
+    // Render gallery
+    renderGeneratedDesignsGallery();
+    toast('✅ Design generated! URL copied to Step 3');
+
+  } catch (error) {
+    console.error('Design generation failed:', error);
+    toast('❌ Generation failed: ' + error.message);
+    output.innerHTML = '';
+    output.appendChild(el('div',{class:'bad'},'Error: ' + error.message));
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🎨 Generate Design';
+  }
+}
+
+// Render Generated Designs Gallery
+function renderGeneratedDesignsGallery() {
+  const output = document.getElementById('generatedDesignsOutput');
+  if (!output) return;
+
+  if (!podData.generatedDesigns || podData.generatedDesigns.length === 0) {
+    output.innerHTML = '';
+    return;
+  }
+
+  output.innerHTML = '';
+  output.appendChild(el('div',{class:'good',style:'margin-bottom:12px;'},'✓ Generated ' + podData.generatedDesigns.length + ' design(s)'));
+
+  const gallery = el('div',{style:'display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;'});
+
+  podData.generatedDesigns.forEach((design, idx) => {
+    const card = el('div',{style:'border:1px solid var(--border);border-radius:4px;padding:8px;background:var(--input-bg);'},[
+      el('img',{src:design.imageUrl,style:'width:100%;height:200px;object-fit:cover;border-radius:4px;margin-bottom:8px;'}),
+      el('div',{style:'font-size:11px;color:var(--muted);margin-bottom:4px;'},'Prompt: ' + (design.prompt.length > 50 ? design.prompt.substring(0, 50) + '...' : design.prompt)),
+      el('div',{style:'font-size:11px;color:var(--muted);margin-bottom:8px;'},'Size: ' + design.size),
+      el('div',{style:'display:flex;gap:4px;'},[
+        el('button',{
+          class:'btn',
+          style:'flex:1;font-size:11px;padding:4px;',
+          onclick:()=>{
+            document.getElementById('mockupImageUrl').value = design.imageUrl;
+            toast('URL copied to Step 3');
+          }
+        },'Use in Step 3'),
+        el('a',{
+          href:design.imageUrl,
+          download:`design-${idx + 1}.png`,
+          class:'btn',
+          style:'flex:1;font-size:11px;padding:4px;text-align:center;text-decoration:none;'
+        },'Download')
+      ])
+    ]);
+    gallery.appendChild(card);
+  });
+
+  output.appendChild(gallery);
 }
 
 // Generate Mockup
