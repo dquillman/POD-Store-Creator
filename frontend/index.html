@@ -280,7 +280,7 @@
 /* =========================
    VERSION - CHANGE ONLY HERE!
    ========================= */
-const VERSION = '1.4.1';
+const VERSION = '1.5.0';
 
 /* =========================
    Configuration
@@ -1665,7 +1665,8 @@ async function uploadStoreStatus(file){
    ========================= */
 
 let aiDesignState = {
-  generatedImages: [] // {id, prompt, imageUrl, timestamp, downloaded}
+  generatedImages: [], // {id, prompt, imageUrl, timestamp, downloaded}
+  customStyles: JSON.parse(localStorage.getItem('pod-custom-styles') || '[]') // {id, name, description}
 };
 
 function renderAIDesignGenerator() {
@@ -1744,15 +1745,16 @@ function renderAIDesignGenerator() {
         ])
       ]),
 
-      el('label', { style: 'display:block;margin-top:16px;font-weight:600;' }, 'Design Style'),
-      el('select', { id: 'ai-design-style', class: 'select', style: 'width:100%;margin-top:8px;' }, [
-        el('option', { value: 'minimalist' }, 'Minimalist Typography'),
-        el('option', { value: 'bold' }, 'Bold & Impactful'),
-        el('option', { value: 'retro' }, 'Retro/Vintage'),
-        el('option', { value: 'modern' }, 'Modern & Clean'),
-        el('option', { value: 'grunge' }, 'Grunge/Distressed'),
-        el('option', { value: 'geometric' }, 'Geometric Shapes'),
-        el('option', { value: 'hand-drawn' }, 'Hand-Drawn/Sketchy')
+      el('div', { style: 'margin-top:16px;' }, [
+        el('div', { style: 'display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;' }, [
+          el('label', { style: 'font-weight:600;' }, 'Design Style'),
+          el('button', {
+            class: 'btn',
+            style: 'padding:4px 12px;font-size:12px;background:var(--accent);color:#fff;',
+            onclick: openStyleManager
+          }, '⚙️ Manage Styles')
+        ]),
+        el('select', { id: 'ai-design-style', class: 'select', style: 'width:100%;' })
       ])
     ]),
 
@@ -1813,10 +1815,172 @@ function renderAIDesignGenerator() {
   container.appendChild(inputPanel);
   container.appendChild(galleryPanel);
 
-  // Render existing images
-  setTimeout(() => renderAIGallery(), 0);
+  // Render existing images and populate style dropdown
+  setTimeout(() => {
+    renderAIGallery();
+    populateStyleDropdown();
+  }, 0);
 
   return container;
+}
+
+// Populate design style dropdown with preset and custom styles
+function populateStyleDropdown() {
+  const dropdown = document.getElementById('ai-design-style');
+  if (!dropdown) return;
+
+  dropdown.innerHTML = '';
+
+  // Preset styles
+  const presetStyles = [
+    { value: 'minimalist', label: 'Minimalist Typography' },
+    { value: 'bold', label: 'Bold & Impactful' },
+    { value: 'retro', label: 'Retro/Vintage' },
+    { value: 'modern', label: 'Modern & Clean' },
+    { value: 'grunge', label: 'Grunge/Distressed' },
+    { value: 'geometric', label: 'Geometric Shapes' },
+    { value: 'hand-drawn', label: 'Hand-Drawn/Sketchy' }
+  ];
+
+  presetStyles.forEach(style => {
+    dropdown.appendChild(el('option', { value: style.value }, style.label));
+  });
+
+  // Custom styles
+  if (aiDesignState.customStyles.length > 0) {
+    dropdown.appendChild(el('option', { disabled: 'disabled', style: 'font-weight:600;background:#333;' }, '─── Custom Styles ───'));
+    aiDesignState.customStyles.forEach(style => {
+      dropdown.appendChild(el('option', { value: 'custom-' + style.id }, '⭐ ' + style.name));
+    });
+  }
+}
+
+// Open style manager modal
+function openStyleManager() {
+  const modal = el('div', {
+    style: 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.8);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;',
+    onclick: (e) => { if (e.target === modal) modal.remove(); }
+  }, [
+    el('div', {
+      class: 'panel',
+      style: 'max-width:700px;width:100%;max-height:90vh;overflow-y:auto;'
+    }, [
+      el('div', { style: 'display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;' }, [
+        el('h2', {}, '⚙️ Manage Design Styles'),
+        el('button', {
+          class: 'btn',
+          style: 'padding:4px 12px;',
+          onclick: () => modal.remove()
+        }, '✕ Close')
+      ]),
+
+      el('p', { class: 'help', style: 'margin-bottom:16px;' },
+        'Create custom design styles with your own prompt descriptions. These will appear in the Design Style dropdown.'),
+
+      // Add New Style Form
+      el('div', { style: 'padding:16px;background:var(--input-bg);border-radius:8px;margin-bottom:16px;border:1px solid var(--border);' }, [
+        el('h3', { style: 'margin-bottom:12px;' }, '➕ Create New Style'),
+        el('label', { style: 'display:block;font-weight:600;margin-bottom:4px;' }, 'Style Name'),
+        el('input', {
+          id: 'new-style-name',
+          class: 'input',
+          placeholder: 'e.g., Cyberpunk Neon',
+          style: 'width:100%;margin-bottom:12px;'
+        }),
+        el('label', { style: 'display:block;font-weight:600;margin-bottom:4px;' }, 'Prompt Description'),
+        el('textarea', {
+          id: 'new-style-description',
+          class: 'input',
+          placeholder: 'e.g., cyberpunk aesthetic, neon colors, futuristic typography, glitch effects',
+          style: 'width:100%;min-height:80px;margin-bottom:12px;'
+        }),
+        el('button', {
+          class: 'btn',
+          style: 'background:var(--ok);color:#fff;padding:8px 16px;',
+          onclick: () => {
+            const name = document.getElementById('new-style-name')?.value.trim();
+            const description = document.getElementById('new-style-description')?.value.trim();
+
+            if (!name) {
+              toast('❌ Please enter a style name');
+              return;
+            }
+            if (!description) {
+              toast('❌ Please enter a description');
+              return;
+            }
+
+            const newStyle = {
+              id: Date.now().toString(),
+              name: name,
+              description: description
+            };
+
+            aiDesignState.customStyles.push(newStyle);
+            localStorage.setItem('pod-custom-styles', JSON.stringify(aiDesignState.customStyles));
+
+            document.getElementById('new-style-name').value = '';
+            document.getElementById('new-style-description').value = '';
+
+            renderCustomStylesList();
+            populateStyleDropdown();
+            toast('✅ Custom style created!');
+          }
+        }, '➕ Add Style')
+      ]),
+
+      // List of existing custom styles
+      el('div', { id: 'custom-styles-list' })
+    ])
+  ]);
+
+  document.body.appendChild(modal);
+
+  // Render existing custom styles
+  renderCustomStylesList();
+}
+
+// Render list of custom styles in the manager
+function renderCustomStylesList() {
+  const list = document.getElementById('custom-styles-list');
+  if (!list) return;
+
+  list.innerHTML = '';
+
+  if (aiDesignState.customStyles.length === 0) {
+    list.appendChild(el('div', { class: 'help', style: 'text-align:center;padding:40px;' },
+      'No custom styles yet. Create one above!'));
+    return;
+  }
+
+  list.appendChild(el('h3', { style: 'margin-bottom:12px;' }, '📚 Your Custom Styles (' + aiDesignState.customStyles.length + ')'));
+
+  aiDesignState.customStyles.forEach(style => {
+    const card = el('div', {
+      style: 'padding:12px;background:var(--panel-bg);border:1px solid var(--border);border-radius:8px;margin-bottom:12px;'
+    }, [
+      el('div', { style: 'display:flex;align-items:start;justify-content:space-between;' }, [
+        el('div', { style: 'flex:1;' }, [
+          el('h4', { style: 'margin-bottom:4px;' }, '⭐ ' + style.name),
+          el('p', { style: 'font-size:13px;color:var(--muted);line-height:1.4;' }, style.description)
+        ]),
+        el('button', {
+          class: 'btn',
+          style: 'padding:4px 8px;background:var(--bad);color:#fff;margin-left:12px;',
+          onclick: () => {
+            if (confirm('Delete "' + style.name + '"?')) {
+              aiDesignState.customStyles = aiDesignState.customStyles.filter(s => s.id !== style.id);
+              localStorage.setItem('pod-custom-styles', JSON.stringify(aiDesignState.customStyles));
+              renderCustomStylesList();
+              populateStyleDropdown();
+              toast('✅ Style deleted');
+            }
+          }
+        }, '🗑️')
+      ])
+    ]);
+    list.appendChild(card);
+  });
 }
 
 function renderAIGallery() {
@@ -1930,6 +2094,16 @@ async function generateAIDesign() {
       'hand-drawn': 'hand-drawn, sketchy, artistic'
     };
 
+    // Check if it's a custom style
+    let styleDescription = styleDescriptions[designStyle];
+    if (designStyle.startsWith('custom-')) {
+      const customStyleId = designStyle.replace('custom-', '');
+      const customStyle = aiDesignState.customStyles.find(s => s.id === customStyleId);
+      if (customStyle) {
+        styleDescription = customStyle.description;
+      }
+    }
+
     const backgroundInstructions = {
       'transparent': 'completely transparent background, PNG format',
       'black': 'solid black background',
@@ -1937,7 +2111,7 @@ async function generateAIDesign() {
       'none': 'artistic background that complements the design'
     };
 
-    prompt = `${styleDescriptions[designStyle]} typography design with the text "${text}". ` +
+    prompt = `${styleDescription} typography design with the text "${text}". ` +
              `Use ${textColor} text color. ` +
              `${backgroundInstructions[background]}. ` +
              `High contrast, print-ready, suitable for t-shirt printing. ` +
@@ -2147,7 +2321,8 @@ function renderMockupStudio() {
   const optionsPanel = el('div', { class: 'panel' }, [
     el('h2', {}, 'Mockup Options'),
 
-    el('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:16px;' }, [
+    // Product and Color
+    el('div', { style: 'display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;' }, [
       el('div', {}, [
         el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'Product Type'),
         el('select', { id: 'mockup-product', class: 'select', style: 'width:100%;' }, [
@@ -2157,7 +2332,7 @@ function renderMockupStudio() {
         ])
       ]),
       el('div', {}, [
-        el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'Color'),
+        el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;' }, 'Shirt Color'),
         el('select', { id: 'mockup-variant', class: 'select', style: 'width:100%;' }, [
           el('option', { value: '4012' }, 'Black'),
           el('option', { value: '4013' }, 'White'),
@@ -2165,6 +2340,40 @@ function renderMockupStudio() {
           el('option', { value: '4016' }, 'Navy')
         ])
       ])
+    ]),
+
+    // Model Customization
+    el('div', { style: 'padding:16px;background:var(--input-bg);border-radius:8px;border:1px solid var(--border);margin-bottom:16px;' }, [
+      el('h3', { style: 'margin-bottom:12px;font-size:16px;' }, '👤 Model & Scene Customization'),
+      el('div', { style: 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;' }, [
+        el('div', {}, [
+          el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;font-size:13px;' }, 'Model Gender'),
+          el('select', { id: 'mockup-model-gender', class: 'select', style: 'width:100%;' }, [
+            el('option', { value: 'any' }, 'Any'),
+            el('option', { value: 'male' }, 'Male'),
+            el('option', { value: 'female' }, 'Female')
+          ])
+        ]),
+        el('div', {}, [
+          el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;font-size:13px;' }, 'Location'),
+          el('select', { id: 'mockup-location', class: 'select', style: 'width:100%;' }, [
+            el('option', { value: 'studio' }, 'Studio'),
+            el('option', { value: 'indoor' }, 'Indoor'),
+            el('option', { value: 'outdoor' }, 'Outdoor'),
+            el('option', { value: 'urban' }, 'Urban')
+          ])
+        ]),
+        el('div', {}, [
+          el('label', { style: 'display:block;font-weight:600;margin-bottom:8px;font-size:13px;' }, 'Background'),
+          el('select', { id: 'mockup-background', class: 'select', style: 'width:100%;' }, [
+            el('option', { value: 'solid' }, 'Solid Color'),
+            el('option', { value: 'scene' }, 'Scene/Environment'),
+            el('option', { value: 'minimal' }, 'Minimal/Clean')
+          ])
+        ])
+      ]),
+      el('p', { class: 'help', style: 'margin-top:12px;font-size:12px;' },
+        '⚠️ Note: Printful API may have limited support for these options. Results may vary.')
     ]),
 
     el('button', {
@@ -2216,6 +2425,9 @@ async function generateMockup() {
 
   const productId = document.getElementById('mockup-product')?.value || '71';
   const variantId = document.getElementById('mockup-variant')?.value || '4012';
+  const modelGender = document.getElementById('mockup-model-gender')?.value || 'any';
+  const location = document.getElementById('mockup-location')?.value || 'studio';
+  const background = document.getElementById('mockup-background')?.value || 'solid';
   const btn = document.getElementById('mockup-generate-btn');
 
   btn.disabled = true;
@@ -2244,7 +2456,10 @@ async function generateMockup() {
       body: JSON.stringify({
         imageBase64: imageBase64,
         productId: parseInt(productId),
-        variantId: parseInt(variantId)
+        variantId: parseInt(variantId),
+        modelGender: modelGender,
+        location: location,
+        background: background
       })
     });
 

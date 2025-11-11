@@ -603,10 +603,24 @@ app.post("/api/upload-image", async (req, res) => {
 
 // Generate product mockups via Printful
 // POST /api/mockup
-// Body: { productId: 71, variantId: 4012, imageUrl: "https://..." OR imageBase64: "data:..." }
+// Body: { productId: 71, variantId: 4012, imageUrl: "https://..." OR imageBase64: "data:...", modelGender, location, background }
 app.post("/api/mockup", async (req, res) => {
   try {
-    const { productId = 71, variantId = 4012, imageUrl, imageBase64, options = {} } = req.body;
+    const {
+      productId = 71,
+      variantId = 4012,
+      imageUrl,
+      imageBase64,
+      modelGender = 'any',
+      location = 'studio',
+      background = 'solid',
+      options = {}
+    } = req.body;
+
+    // Note: Printful's mockup generator API provides pre-rendered mockups.
+    // Custom model/scene options may not be directly supported.
+    // These params are stored for potential future use or custom rendering.
+    console.log('Mockup customization requested:', { modelGender, location, background });
 
     // If base64 provided, upload to Shopify first to get public URL
     let finalImageUrl = imageUrl;
