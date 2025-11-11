@@ -280,7 +280,7 @@
 /* =========================
    VERSION - CHANGE ONLY HERE!
    ========================= */
-const VERSION = '1.6.0';
+const VERSION = '1.6.1';
 
 /* =========================
    Configuration
@@ -1222,13 +1222,26 @@ function renderPODScaffold(){
     // Mockups & Listings Section
     el('div',{class:'split',style:'margin-top:12px;'},[
       el('div',{class:'panel'},[
-        el('h2',{},'3. Generate Mockups'),
-        el('div',{class:'help'},'Create product mockups from your designs'),
+        el('h2',{},'3. Generate AI Mockups'),
+        el('div',{class:'help'},'Describe your design - DALL-E will generate a photorealistic mockup'),
         el('div',{style:'margin:8px 0;'},[
-          el('label',{},'Image URL: '),
-          el('input',{id:'mockupImageUrl',class:'input',placeholder:'https://...',style:'width:100%;margin-top:4px;'})
+          el('label',{},'Design Description: '),
+          el('textarea',{id:'workflow-design-desc',class:'input',placeholder:'e.g., white bold text saying "COFFEE FIRST"',style:'width:100%;min-height:60px;margin-top:4px;'})
         ]),
-        el('button',{class:'btn',onclick:generateMockup},'Create Mockup'),
+        el('div',{style:'display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;'},[
+          el('select',{id:'workflow-shirt-color',class:'select'},[
+            el('option',{value:'Black'},'Black Shirt'),
+            el('option',{value:'White'},'White Shirt'),
+            el('option',{value:'Navy'},'Navy Shirt'),
+            el('option',{value:'Red'},'Red Shirt')
+          ]),
+          el('select',{id:'workflow-model-gender',class:'select'},[
+            el('option',{value:'any'},'Any Gender'),
+            el('option',{value:'male'},'Male Model'),
+            el('option',{value:'female'},'Female Model')
+          ])
+        ]),
+        el('button',{class:'btn',onclick:generateWorkflowMockup},'🎨 Generate Mockup'),
         el('div',{id:'mockupOutput',style:'margin-top:12px;'})
       ]),
       el('div',{class:'panel'},[
@@ -1593,42 +1606,67 @@ function renderGeneratedDesignsGallery() {
   output.appendChild(gallery);
 }
 
-// Generate Mockup
-async function generateMockup(){
-  const imageUrl = document.getElementById('mockupImageUrl').value;
+// Generate Workflow Mockup (DALL-E)
+async function generateWorkflowMockup(){
+  const designDescription = document.getElementById('workflow-design-desc')?.value.trim();
   const output = document.getElementById('mockupOutput');
 
-  if (!imageUrl) {
-    toast('Please enter an image URL');
+  if (!designDescription) {
+    toast('❌ Please describe your design');
     return;
   }
 
-  output.innerHTML = 'Generating mockup... (this may take 10-20 seconds)';
+  const shirtColor = document.getElementById('workflow-shirt-color')?.value || 'Black';
+  const modelGender = document.getElementById('workflow-model-gender')?.value || 'any';
+
+  output.innerHTML = '⏳ Generating AI mockup with DALL-E...';
 
   try {
-    const result = await apiCall('/api/mockup', {
+    // Gender mapping
+    const genderDesc = modelGender === 'male' ? 'man' : modelGender === 'female' ? 'woman' : 'person';
+
+    // Construct DALL-E prompt for POD workflow
+    const prompt = `Professional product photography of a ${genderDesc} wearing a ${shirtColor.toLowerCase()} t-shirt. ` +
+                   `The t-shirt features this design: ${designDescription}. ` +
+                   `Setting: professional studio, clean solid color background. ` +
+                   `Photorealistic, high quality, centered composition, well-lit, fashion photography style. ` +
+                   `The design on the t-shirt should be clearly visible and prominent.`;
+
+    console.log('POD Workflow mockup prompt:', prompt);
+
+    const result = await apiCall('/api/generate-design', {
       method: 'POST',
-      body: JSON.stringify({ imageUrl, productId: 71, variantId: 4012 })
+      body: JSON.stringify({
+        prompt: prompt,
+        size: '1024x1024',
+        style: 'vivid',
+        provider: 'dalle'
+      })
     });
 
-    podData.mockups = result.mockups || [];
+    if (!result.ok || !result.imageUrl) {
+      throw new Error(result.error || 'Mockup generation failed');
+    }
+
+    // Store mockup in podData for Step 4
+    podData.mockups = [{
+      url: result.imageUrl,
+      placement: 'front',
+      description: designDescription,
+      settings: { modelGender, shirtColor }
+    }];
+
     output.innerHTML = '';
-    output.appendChild(el('div',{class:'good',style:'margin-bottom:8px;'},'✓ Mockup generated'));
+    output.appendChild(el('div',{class:'good',style:'margin-bottom:8px;'},'✅ AI mockup generated!'));
+    output.appendChild(el('img',{src:result.imageUrl,style:'max-width:300px;margin:8px 0;border:1px solid var(--border);border-radius:4px;'}));
+    output.appendChild(el('div',{class:'help',style:'margin-top:8px;'},'Mockup ready for listing creation in Step 4'));
 
-    if (result.mockups && result.mockups.length > 0) {
-      result.mockups.forEach(m => {
-        output.appendChild(el('img',{src:m.url,style:'max-width:200px;margin:8px;border:1px solid #ddd;border-radius:4px;'}));
-      });
-    }
-
-    if (result.message) {
-      output.appendChild(el('div',{class:'help',style:'margin-top:8px;'},result.message));
-    }
-
-    toast('Mockup ready!');
+    toast('✅ Mockup ready!');
   } catch (error) {
+    console.error('Workflow mockup generation failed:', error);
     output.innerHTML = '';
-    output.appendChild(el('div',{class:'bad'},'Error: ' + error.message));
+    output.appendChild(el('div',{class:'bad'},'❌ Error: ' + error.message));
+    toast('❌ Mockup failed: ' + error.message);
   }
 }
 
