@@ -62,11 +62,20 @@ app.post("/api/run-check-status", async (_req, res) => {
   try {
     const { exec } = await import('child_process');
     const { promisify } = await import('util');
+    const path = await import('path');
+    const { fileURLToPath } = await import('url');
     const execAsync = promisify(exec);
 
-    // Run the check-status script in the parent directory
+    // Get the directory of the current module (backend folder)
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    // Go up one level to project root
+    const projectRoot = path.resolve(__dirname, '..');
+
+    console.log('Running check-status from:', projectRoot);
+
     const { stdout, stderr } = await execAsync('npm run check-status', {
-      cwd: process.cwd() + '/..',
+      cwd: projectRoot,
       timeout: 30000 // 30 second timeout
     });
 
@@ -408,15 +417,180 @@ app.post("/api/generate-design", async (req, res) => {
   }
 });
 
+// Upload image and get public URL for Printful
+// POST /api/upload-image
+// Body: { imageBase64: "data:image/png;base64,...", filename: "design.png" }
+app.post("/api/upload-image", async (req, res) => {
+  try {
+    const { imageBase64, filename = 'design.png' } = req.body;
+
+    if (!imageBase64) {
+      return res.status(400).json({ ok: false, error: 'imageBase64 is required' });
+    }
+
+    if (!SHOPIFY_STORE || !SHOPIFY_ACCESS_TOKEN) {
+      return res.status(400).json({ ok: false, error: 'Shopify credentials not configured' });
+    }
+
+    // Extract base64 content and mime type
+    const matches = imageBase64.match(/^data:([^;]+);base64,(.+)$/);
+    if (!matches) {
+      return res.status(400).json({ ok: false, error: 'Invalid base64 image format' });
+    }
+
+    const mimeType = matches[1];
+    const base64Content = matches[2];
+    const buffer = Buffer.from(base64Content, 'base64');
+
+    // Upload to Shopify Files using GraphQL
+    // Step 1: Generate staged upload URL
+    const stagedUploadMutation = `
+      mutation stagedUploadsCreate($input: [StagedUploadInput!]!) {
+        stagedUploadsCreate(input: $input) {
+          stagedTargets {
+            url
+            resourceUrl
+            parameters {
+              name
+              value
+            }
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `;
+
+    const stagedUploadVars = {
+      input: [{
+        resource: "FILE",
+        filename: filename,
+        mimeType: mimeType,
+        fileSize: buffer.length.toString(),
+        httpMethod: "POST"
+      }]
+    };
+
+    const stagedResponse = await fetch(`https://${SHOPIFY_STORE}/admin/api/2024-01/graphql.json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
+      },
+      body: JSON.stringify({
+        query: stagedUploadMutation,
+        variables: stagedUploadVars
+      })
+    });
+
+    const stagedData = await stagedResponse.json();
+
+    if (stagedData.errors || stagedData.data?.stagedUploadsCreate?.userErrors?.length > 0) {
+      throw new Error('Shopify staged upload failed: ' + JSON.stringify(stagedData.errors || stagedData.data.stagedUploadsCreate.userErrors));
+    }
+
+    const stagedTarget = stagedData.data.stagedUploadsCreate.stagedTargets[0];
+
+    // Step 2: Upload file to staged URL
+    const formData = new FormData();
+    stagedTarget.parameters.forEach(param => {
+      formData.append(param.name, param.value);
+    });
+    formData.append('file', new Blob([buffer], { type: mimeType }), filename);
+
+    await fetch(stagedTarget.url, {
+      method: 'POST',
+      body: formData
+    });
+
+    // Step 3: Create File resource in Shopify
+    const fileCreateMutation = `
+      mutation fileCreate($files: [FileCreateInput!]!) {
+        fileCreate(files: $files) {
+          files {
+            id
+            alt
+            createdAt
+            ... on MediaImage {
+              id
+              image {
+                url
+              }
+            }
+          }
+          userErrors {
+            field
+            message
+          }
+        }
+      }
+    `;
+
+    const fileCreateVars = {
+      files: [{
+        contentType: "IMAGE",
+        originalSource: stagedTarget.resourceUrl
+      }]
+    };
+
+    const fileCreateResponse = await fetch(`https://${SHOPIFY_STORE}/admin/api/2024-01/graphql.json`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Shopify-Access-Token': SHOPIFY_ACCESS_TOKEN
+      },
+      body: JSON.stringify({
+        query: fileCreateMutation,
+        variables: fileCreateVars
+      })
+    });
+
+    const fileCreateData = await fileCreateResponse.json();
+
+    if (fileCreateData.errors || fileCreateData.data?.fileCreate?.userErrors?.length > 0) {
+      throw new Error('Shopify file create failed: ' + JSON.stringify(fileCreateData.errors || fileCreateData.data.fileCreate.userErrors));
+    }
+
+    const imageUrl = fileCreateData.data.fileCreate.files[0].image.url;
+
+    res.json({
+      ok: true,
+      imageUrl: imageUrl
+    });
+  } catch (error) {
+    console.error('Image upload error:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
 // Generate product mockups via Printful
 // POST /api/mockup
-// Body: { productId: 71, variant: 4012, imageUrl: "https://..." }
+// Body: { productId: 71, variantId: 4012, imageUrl: "https://..." OR imageBase64: "data:..." }
 app.post("/api/mockup", async (req, res) => {
   try {
-    const { productId = 71, variantId = 4012, imageUrl, options = {} } = req.body;
+    const { productId = 71, variantId = 4012, imageUrl, imageBase64, options = {} } = req.body;
 
-    if (!imageUrl) {
-      return res.status(400).json({ ok: false, error: 'imageUrl is required' });
+    // If base64 provided, upload to Shopify first to get public URL
+    let finalImageUrl = imageUrl;
+    if (imageBase64) {
+      console.log('Uploading base64 image to Shopify CDN...');
+      const uploadResponse = await fetch(`http://localhost:${PORT}/api/upload-image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64, filename: `mockup-${Date.now()}.png` })
+      });
+      const uploadData = await uploadResponse.json();
+      if (!uploadData.ok) {
+        throw new Error('Image upload failed: ' + uploadData.error);
+      }
+      finalImageUrl = uploadData.imageUrl;
+      console.log('Image uploaded to:', finalImageUrl);
+    }
+
+    if (!finalImageUrl) {
+      return res.status(400).json({ ok: false, error: 'imageUrl or imageBase64 is required' });
     }
 
     if (!PRINTFUL_API_KEY) {
@@ -438,7 +612,7 @@ app.post("/api/mockup", async (req, res) => {
       files: [
         {
           placement: "front",
-          image_url: imageUrl,
+          image_url: finalImageUrl,
           position: {
             area_width: 1800,
             area_height: 2400,

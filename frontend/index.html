@@ -280,7 +280,7 @@
 /* =========================
    VERSION - CHANGE ONLY HERE!
    ========================= */
-const VERSION = '1.1.0';
+const VERSION = '1.1.1';
 
 /* =========================
    Configuration
@@ -1769,7 +1769,7 @@ function handleMockupFileUpload(e) {
 }
 
 async function generateMockup() {
-  if (!mockupState.artworkUrl) {
+  if (!mockupState.artworkFile) {
     toast('Please upload artwork first');
     return;
   }
@@ -1779,15 +1779,30 @@ async function generateMockup() {
   const btn = document.getElementById('mockup-generate-btn');
 
   btn.disabled = true;
-  btn.textContent = '⏳ Generating mockup...';
+  btn.textContent = '⏳ Reading file...';
 
   try {
+    // Convert file to base64
+    const reader = new FileReader();
+    const imageBase64 = await new Promise((resolve, reject) => {
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(mockupState.artworkFile);
+    });
+
+    btn.textContent = '⏳ Uploading to CDN...';
+    toast('Uploading artwork to Shopify CDN...');
+
+    // Brief delay to show the upload message
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    btn.textContent = '⏳ Generating mockup...';
     toast('Creating mockup with Printful...');
 
     const result = await apiCall('/api/mockup', {
       method: 'POST',
       body: JSON.stringify({
-        imageUrl: mockupState.artworkUrl,
+        imageBase64: imageBase64,
         productId: parseInt(productId),
         variantId: parseInt(variantId)
       })
