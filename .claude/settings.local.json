@@ -59,7 +59,8 @@
       "Bash(nul)",
       "Bash(tasklist:*)",
       "Bash(wmic process where \"name like ''''%node%''''\" get Name,ProcessId,CommandLine 2)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(cmd.exe //c taskkill //F //PID 28044)"
     ],
     "deny": [],
     "ask": []
